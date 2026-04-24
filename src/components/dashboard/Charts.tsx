@@ -1,170 +1,222 @@
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
   LineChart,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
+  ZAxis,
 } from "recharts";
+import type { TrendRow } from "@/lib/mock-data";
 
-/**
- * PROCESSADOR FINAL ANCAR (ROBUSTO + MULTI-FONTE)
- */
-function failSafeAncarProcessor(rawData: any[]) {
-  if (!Array.isArray(rawData)) return [];
+const axisStyle = { fontSize: 10, fill: "hsl(var(--muted-foreground))" };
 
-  const map = new Map<string, any>();
+function shortLabel(ts: string): string {
+  if (!ts) return "";
+  if (ts.includes(" ")) return ts.split(" ")[1]?.slice(0, 5) ?? ts;
+  if (ts.includes("T")) return ts.split("T")[1]?.slice(0, 5) ?? ts;
+  return ts;
+}
 
-  const clean = (v: any) => {
-    if (v === null || v === undefined || v === "null" || v === "") return null;
-    const n = Number(v);
-    return isNaN(n) ? null : n;
-  };
-
-  for (const row of rawData) {
-    const ts = row.timestamp || row.data_hora || row["Date Range"];
-    if (!ts) continue;
-
-    if (!map.has(ts)) {
-      map.set(ts, {
-        timestamp: ts,
-        label: ts.includes(" ") ? ts.split(" ")[1]?.slice(0, 5) : ts,
-
-        temp_entrada: null,
-        temp_saida: null,
-        temp_ext: null,
-
-        kw_ur1: null,
-        kw_ur2: null,
-        kw_ur3: null,
-
-        perifericos: null,
-      });
-    }
-
-    const entry = map.get(ts);
-
-    // =========================
-    // TEMPERATURAS
-    // =========================
-    entry.temp_entrada =
-      clean(row.ewt_ur1 ?? row.temp_entrada) ?? entry.temp_entrada;
-
-    entry.temp_saida =
-      clean(row.lwt_ur1 ?? row.temp_saida) ?? entry.temp_saida;
-
-    entry.temp_ext =
-      clean(row.temp_ext ?? row.TEMP_EXT) ?? entry.temp_ext;
-
-    // =========================
-    // KW CHILLERS
-    // =========================
-    entry.kw_ur1 =
-      clean(row.kw_ur1) ?? entry.kw_ur1;
-
-    entry.kw_ur2 =
-      clean(row.kw_ur2) ?? entry.kw_ur2;
-
-    entry.kw_ur3 =
-      clean(row.kw_ur3) ?? entry.kw_ur3;
-
-    // =========================
-    // 🔥 PERIFÉRICOS (CORRIGIDO)
-    // =========================
-    entry.perifericos =
-      clean(row.kw_perifericos) ??
-      clean(row.perifericos) ??
-      entry.perifericos;
-  }
-
-  return Array.from(map.values()).sort(
-    (a, b) =>
-      new Date(a.timestamp).getTime() -
-      new Date(b.timestamp).getTime()
+function ChartFrame({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {subtitle && (
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {subtitle}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
   );
 }
 
-const axisStyle = { fontSize: 10, fill: "#666" };
-
-/**
- * TEMPERATURE CHART
- */
-export function TemperatureChart({ data }: { data: any[] }) {
-  const chartData = failSafeAncarProcessor(data);
-
+function EmptyState({ height = 240 }: { height?: number }) {
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-
-        <XAxis dataKey="label" tick={axisStyle} />
-        <YAxis tick={axisStyle} />
-
-        <Tooltip />
-        <Legend />
-
-        <Line
-          name="Entrada"
-          type="monotone"
-          dataKey="temp_entrada"
-          stroke="#ffa500"
-          dot={false}
-        />
-
-        <Line
-          name="Saída"
-          type="monotone"
-          dataKey="temp_saida"
-          stroke="#00bfff"
-          dot={false}
-        />
-
-        {/* 🔥 AGORA FUNCIONA */}
-        <Line
-          name="Externa"
-          type="monotone"
-          dataKey="temp_ext"
-          stroke="#888"
-          dot={false}
-          strokeDasharray="5 5"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div
+      className="flex items-center justify-center rounded-md border border-dashed border-border/60 text-xs text-muted-foreground"
+      style={{ height }}
+    >
+      Sem dados no período
+    </div>
   );
 }
 
 /**
- * CHILLER LOAD CHART
+ * 1) LINE — Eficiência kW/TR ao longo do tempo
  */
-export function ChillerLoadChart({ data }: { data: any[] }) {
-  const chartData = failSafeAncarProcessor(data);
+export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
+  const chartData = data.map((r) => ({
+    label: shortLabel(r.timestamp),
+    eficiencia_kw_tr: r.eficiencia_kw_tr,
+  }));
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <AreaChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+    <ChartFrame title="Eficiência kW/TR" subtitle="série temporal">
+      {chartData.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" tick={axisStyle} />
+            <YAxis tick={axisStyle} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line
+              name="kW/TR"
+              type="monotone"
+              dataKey="eficiencia_kw_tr"
+              stroke="var(--chart-1)"
+              dot={false}
+              strokeWidth={2}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
+  );
+}
 
-        <XAxis dataKey="label" tick={axisStyle} />
-        <YAxis tick={axisStyle} />
+/**
+ * 2) BARS — Consumo kW por chiller + periféricos (média do período)
+ */
+export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
+  const keys: { key: keyof TrendRow; label: string; color: string }[] = [
+    { key: "kw_ur1", label: "UR1", color: "var(--chart-1)" },
+    { key: "kw_ur2", label: "UR2", color: "var(--chart-2)" },
+    { key: "kw_ur3", label: "UR3", color: "var(--chart-3)" },
+    { key: "kw_ur4", label: "UR4", color: "var(--chart-4)" },
+    { key: "kw_ur5", label: "UR5", color: "var(--chart-5)" },
+    { key: "kw_perifericos", label: "Perif.", color: "var(--chart-6)" },
+  ];
 
-        <Tooltip />
-        <Legend />
+  const chartData =
+    data.length === 0
+      ? []
+      : keys.map(({ key, label, color }) => {
+          const sum = data.reduce((a, r) => a + (Number(r[key]) || 0), 0);
+          return { name: label, kw: sum / data.length, fill: color };
+        });
 
-        <Area dataKey="kw_ur1" stackId="1" fill="#00bfff" />
-        <Area dataKey="kw_ur2" stackId="1" fill="#32cd32" />
-        <Area dataKey="kw_ur3" stackId="1" fill="#ffa500" />
+  return (
+    <ChartFrame title="Consumo kW" subtitle="média por chiller">
+      {chartData.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" tick={axisStyle} />
+            <YAxis tick={axisStyle} />
+            <Tooltip />
+            <Bar dataKey="kw" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
+  );
+}
 
-        {/* 🔥 PERIFÉRICOS FINALMENTE FIX */}
-        <Area
-          dataKey="perifericos"
-          stackId="1"
-          fill="#ff4500"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+/**
+ * 3) SCATTER — Temp. Externa × kW/TR
+ */
+export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
+  const chartData = data
+    .filter((r) => (r.temp_ext || 0) > 0 && (r.eficiencia_kw_tr || 0) > 0)
+    .map((r) => ({ temp_ext: r.temp_ext, kw_tr: r.eficiencia_kw_tr }));
+
+  return (
+    <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática">
+      {chartData.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <ScatterChart>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              type="number"
+              dataKey="temp_ext"
+              name="Temp. Ext"
+              unit="°C"
+              tick={axisStyle}
+            />
+            <YAxis
+              type="number"
+              dataKey="kw_tr"
+              name="kW/TR"
+              tick={axisStyle}
+            />
+            <ZAxis range={[40, 40]} />
+            <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+            <Scatter data={chartData} fill="var(--chart-3)" />
+          </ScatterChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
+  );
+}
+
+/**
+ * 4) SCATTER — kW/TR × Carga (TR)
+ */
+export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
+  const chartData = data
+    .map((r) => {
+      const carga =
+        r.carga_tr ??
+        // fallback: estimativa simples se carga_tr não vier do banco
+        (r.kw_total_planta && r.eficiencia_kw_tr
+          ? r.kw_total_planta / r.eficiencia_kw_tr
+          : 0);
+      return { carga_tr: carga, kw_tr: r.eficiencia_kw_tr };
+    })
+    .filter((d) => d.carga_tr > 0 && d.kw_tr > 0);
+
+  return (
+    <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação">
+      {chartData.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <ScatterChart>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              type="number"
+              dataKey="carga_tr"
+              name="Carga"
+              unit=" TR"
+              tick={axisStyle}
+            />
+            <YAxis
+              type="number"
+              dataKey="kw_tr"
+              name="kW/TR"
+              tick={axisStyle}
+            />
+            <ZAxis range={[40, 40]} />
+            <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+            <Scatter data={chartData} fill="var(--chart-2)" />
+          </ScatterChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
   );
 }
