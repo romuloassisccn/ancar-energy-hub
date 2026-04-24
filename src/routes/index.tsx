@@ -46,43 +46,74 @@ const tierTone: Record<string, "success" | "default" | "warning" | "critical"> =
 function DashboardPage() {
   const [allRows, setAllRows] = useState<TrendRow[]>([]);
   const [range, setRange] = useState<RangeKey>("week");
-  const [selected, setSelected] = useState<ShoppingId>("BAN");
+  const [selected, setSelected] = useState<ShoppingId>("BLD");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         const data = await buildDataset();
-        if (!cancelled) setAllRows(Array.isArray(data) ? data : []);
+        console.log("DATASET FINAL:", data);
+
+        if (!cancelled) {
+          setAllRows(Array.isArray(data) ? data : []);
+        }
       } catch (e) {
         console.error("Erro na carga de dados:", e);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const rangeRows = useMemo(() => filterByRange(allRows, range), [allRows, range]);
-  const aggregates = useMemo(() => aggregateByShopping(rangeRows), [rangeRows]);
+  const rangeRows = useMemo(
+    () => filterByRange(allRows, range),
+    [allRows, range]
+  );
 
+  const aggregates = useMemo(
+    () => aggregateByShopping(rangeRows),
+    [rangeRows]
+  );
+
+  // ✅ CORREÇÃO AQUI (case insensitive)
   const selectedRows = useMemo(
-    () => rangeRows.filter((r) => r.shopping_id === selected),
-    [rangeRows, selected],
+    () =>
+      rangeRows.filter(
+        (r) => r.shopping_id?.toUpperCase() === selected
+      ),
+    [rangeRows, selected]
   );
 
   // ============= NETWORK KPIs =============
   const network = useMemo(() => {
     const op = aggregates.filter((a) => (a.avg_efficiency || 0) > 0);
+
     if (op.length === 0) {
-      return { avgEff: 0, totalKw: 0, best: null as null | typeof op[number], worst: null as null | typeof op[number], active: 0 };
+      return {
+        avgEff: 0,
+        totalKw: 0,
+        best: null,
+        worst: null,
+        active: 0,
+      };
     }
-    const avgEff = op.reduce((a, b) => a + b.avg_efficiency, 0) / op.length;
+
+    const avgEff =
+      op.reduce((a, b) => a + b.avg_efficiency, 0) / op.length;
+
     const totalKw = op.reduce((a, b) => a + b.avg_kw_total, 0);
-    const sorted = [...op].sort((a, b) => a.avg_efficiency - b.avg_efficiency);
+
+    const sorted = [...op].sort(
+      (a, b) => a.avg_efficiency - b.avg_efficiency
+    );
+
     return {
       avgEff,
       totalKw,
@@ -92,18 +123,32 @@ function DashboardPage() {
     };
   }, [aggregates]);
 
-  // ============= SELECTED SHOPPING KPIs =============
-  // Máximas registradas (Vazão, Potência, Temp. Externa) no período.
+  // ============= SELECTED KPIs =============
   const selectedKpis = useMemo(() => {
     if (selectedRows.length === 0) return null;
 
-    const maxVazao = selectedRows.reduce((m, r) => Math.max(m, r.vazao || 0), 0);
-    const maxKw = selectedRows.reduce((m, r) => Math.max(m, r.kw_total_planta || 0), 0);
-    const maxTempExt = selectedRows.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
+    const maxVazao = selectedRows.reduce(
+      (m, r) => Math.max(m, r.vazao || 0),
+      0
+    );
 
-    const valid = selectedRows.filter((r) => (r.eficiencia_kw_tr || 0) > 0);
+    const maxKw = selectedRows.reduce(
+      (m, r) => Math.max(m, r.kw_total_planta || 0),
+      0
+    );
+
+    const maxTempExt = selectedRows.reduce(
+      (m, r) => Math.max(m, r.temp_ext || 0),
+      0
+    );
+
+    const valid = selectedRows.filter(
+      (r) => (r.eficiencia_kw_tr || 0) > 0
+    );
+
     const avgEff = valid.length
-      ? valid.reduce((a, b) => a + b.eficiencia_kw_tr, 0) / valid.length
+      ? valid.reduce((a, b) => a + b.eficiencia_kw_tr, 0) /
+        valid.length
       : 0;
 
     return {
@@ -135,7 +180,8 @@ function DashboardPage() {
       />
 
       <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
-        {/* ===== TOPO: KPIs DE REDE ===== */}
+
+        {/* KPIs REDE */}
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <KpiCard
             label="Média da Rede"
@@ -143,20 +189,22 @@ function DashboardPage() {
             unit="kW/TR"
             icon={Activity}
           />
+
           <KpiCard
-            label="Vazão Máxima Registrada"
+            label="Vazão Máxima"
             value={format(selectedKpis?.maxVazao, 1)}
             unit="m³/h"
             icon={Waves}
-            tone="default"
           />
+
           <KpiCard
-            label="Potência Máxima Registrada"
+            label="Potência Máxima"
             value={format(selectedKpis?.maxKw, 0)}
             unit="kW"
             icon={Zap}
             tone="warning"
           />
+
           <KpiCard
             label="Temp. Externa Máxima"
             value={format(selectedKpis?.maxTempExt, 1)}
@@ -166,51 +214,65 @@ function DashboardPage() {
           />
         </section>
 
-        {/* ===== HEADER DO SHOPPING + CONTROLES ===== */}
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-5">
+        {/* HEADER */}
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-5">
           <div>
             <h2 className="text-2xl font-semibold">
               <span className="text-primary">{selected}</span> ·{" "}
               {SHOPPING_NAMES[selected]}
             </h2>
+
             <p className="text-xs text-muted-foreground">
-              {selectedKpis ? `${selectedKpis.samples} logs no período` : "Sem dados no período"}
+              {selectedKpis
+                ? `${selectedKpis.samples} logs`
+                : "Sem dados"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+
+          <div className="flex items-center gap-2">
             <RangeSelector value={range} onChange={setRange} />
             <ThemeToggle />
           </div>
         </section>
 
-        {/* ===== KPI EFICIÊNCIA DO SHOPPING ===== */}
+        {/* KPIs SHOPPING */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <KpiCard
-            label="Eficiência Média"
+            label="Eficiência"
             value={format(selectedKpis?.eff)}
             unit="kW/TR"
             icon={Activity}
-            tone={selectedKpis ? tierTone[performanceTier(selectedKpis.eff)] : "default"}
+            tone={
+              selectedKpis
+                ? tierTone[performanceTier(selectedKpis.eff)]
+                : "default"
+            }
           />
+
           <KpiCard
             label="Amostras"
             value={selectedKpis ? String(selectedKpis.samples) : "—"}
             unit="logs"
             icon={Gauge}
           />
+
           <KpiCard
-            label="Período Ativo"
+            label="Período"
             value={
-              range === "today" ? "24 h" :
-              range === "week" ? "7 d" :
-              range === "month" ? "30 d" :
-              range === "quarter" ? "90 d" : "365 d"
+              range === "today"
+                ? "24h"
+                : range === "week"
+                ? "7d"
+                : range === "month"
+                ? "30d"
+                : range === "quarter"
+                ? "90d"
+                : "365d"
             }
-            icon={Activity}
           />
         </section>
 
-        {/* ===== GRADE 2x2 DE GRÁFICOS ===== */}
+        {/* GRÁFICOS */}
         <section className="grid gap-4 md:grid-cols-2">
           <EfficiencyLineChart data={selectedRows} />
           <ConsumptionBarChart data={selectedRows} />
@@ -218,13 +280,14 @@ function DashboardPage() {
           <EfficiencyVsLoadScatter data={selectedRows} />
         </section>
 
-        {/* ===== RANKING + LOGS ===== */}
+        {/* RANKING + LOG */}
         <section className="grid gap-6 xl:grid-cols-[400px_1fr]">
           <EfficiencyRanking
             data={aggregates}
             selected={selected}
             onSelect={setSelected}
           />
+
           <LogsTable rows={selectedRows} />
         </section>
       </main>

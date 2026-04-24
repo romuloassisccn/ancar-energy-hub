@@ -17,11 +17,27 @@ import type { TrendRow } from "@/lib/mock-data";
 
 const axisStyle = { fontSize: 10, fill: "hsl(var(--muted-foreground))" };
 
-function shortLabel(ts: string): string {
+// CORREÇÃO: Função melhorada para tratar formato ISO do PostgreSQL e do WebCTRL
+function shortLabel(ts: any): string {
   if (!ts) return "";
-  if (ts.includes(" ")) return ts.split(" ")[1]?.slice(0, 5) ?? ts;
-  if (ts.includes("T")) return ts.split("T")[1]?.slice(0, 5) ?? ts;
-  return ts;
+  const strTs = String(ts);
+  
+  // Se vier do Banco (ISO): 2026-04-22T20:00:00.000Z
+  if (strTs.includes("T")) {
+    return strTs.split("T")[1]?.slice(0, 5) ?? strTs;
+  }
+  // Se vier do CSV (WebCTRL): 22/04/2026 20:00:00
+  if (strTs.includes(" ")) {
+    return strTs.split(" ")[1]?.slice(0, 5) ?? strTs;
+  }
+  return strTs.slice(0, 5);
+}
+
+// CORREÇÃO: Função para garantir que o gráfico siga a linha do tempo correta
+function sortData(data: TrendRow[]) {
+  return [...data].sort((a, b) => {
+    return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
+  });
 }
 
 function ChartFrame({
@@ -63,7 +79,8 @@ function EmptyState({ height = 240 }: { height?: number }) {
  * 1) LINE — Eficiência kW/TR ao longo do tempo
  */
 export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
-  const chartData = data.map((r) => ({
+  // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
+  const chartData = sortData(data).map((r) => ({
     label: shortLabel(r.timestamp),
     eficiencia_kw_tr: r.eficiencia_kw_tr,
   }));
@@ -87,6 +104,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
               stroke="var(--chart-1)"
               dot={false}
               strokeWidth={2}
+              connectNulls // Evita buracos se faltar um dado isolado
             />
           </LineChart>
         </ResponsiveContainer>
@@ -96,15 +114,13 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
 }
 
 /**
- * 2) BARS — Consumo kW por chiller + periféricos (média do período)
+ * 2) BARS — Consumo kW por chiller + periféricos
  */
 export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
   const keys: { key: keyof TrendRow; label: string; color: string }[] = [
     { key: "kw_ur1", label: "UR1", color: "var(--chart-1)" },
     { key: "kw_ur2", label: "UR2", color: "var(--chart-2)" },
     { key: "kw_ur3", label: "UR3", color: "var(--chart-3)" },
-    { key: "kw_ur4", label: "UR4", color: "var(--chart-4)" },
-    { key: "kw_ur5", label: "UR5", color: "var(--chart-5)" },
     { key: "kw_perifericos", label: "Perif.", color: "var(--chart-6)" },
   ];
 
@@ -112,8 +128,9 @@ export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
     data.length === 0
       ? []
       : keys.map(({ key, label, color }) => {
-          const sum = data.reduce((a, r) => a + (Number(r[key]) || 0), 0);
-          return { name: label, kw: sum / data.length, fill: color };
+          const validData = data.filter(r => Number(r[key]) > 0);
+          const sum = validData.reduce((a, r) => a + (Number(r[key]) || 0), 0);
+          return { name: label, kw: validData.length > 0 ? sum / validData.length : 0, fill: color };
         });
 
   return (
@@ -140,7 +157,7 @@ export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
  */
 export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
   const chartData = data
-    .filter((r) => (r.temp_ext || 0) > 0 && (r.eficiencia_kw_tr || 0) > 0)
+    .filter((r) => (Number(r.temp_ext) || 0) > 0 && (Number(r.eficiencia_kw_tr) || 0) > 0)
     .map((r) => ({ temp_ext: r.temp_ext, kw_tr: r.eficiencia_kw_tr }));
 
   return (
@@ -156,17 +173,20 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
               dataKey="temp_ext"
               name="Temp. Ext"
               unit="°C"
+              domain={['auto', 'auto']}
               tick={axisStyle}
             />
+            <XAxis dataKey="label" tick={axisStyle} hide id="hidden-x" />
             <YAxis
               type="number"
               dataKey="kw_tr"
               name="kW/TR"
+              domain={['auto', 'auto']}
               tick={axisStyle}
             />
-            <ZAxis range={[40, 40]} />
+            <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Scatter data={chartData} fill="var(--chart-3)" />
+            <Scatter data={chartData} fill="var(--chart-3)" opacity={0.7} />
           </ScatterChart>
         </ResponsiveContainer>
       )}
@@ -180,12 +200,7 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
 export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
   const chartData = data
     .map((r) => {
-      const carga =
-        r.carga_tr ??
-        // fallback: estimativa simples se carga_tr não vier do banco
-        (r.kw_total_planta && r.eficiencia_kw_tr
-          ? r.kw_total_planta / r.eficiencia_kw_tr
-          : 0);
+      const carga = Number(r.carga_tr) || 0;
       return { carga_tr: carga, kw_tr: r.eficiencia_kw_tr };
     })
     .filter((d) => d.carga_tr > 0 && d.kw_tr > 0);
@@ -203,17 +218,19 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
               dataKey="carga_tr"
               name="Carga"
               unit=" TR"
+              domain={['auto', 'auto']}
               tick={axisStyle}
             />
             <YAxis
               type="number"
               dataKey="kw_tr"
               name="kW/TR"
+              domain={['auto', 'auto']}
               tick={axisStyle}
             />
-            <ZAxis range={[40, 40]} />
+            <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Scatter data={chartData} fill="var(--chart-2)" />
+            <Scatter data={chartData} fill="var(--chart-2)" opacity={0.7} />
           </ScatterChart>
         </ResponsiveContainer>
       )}
