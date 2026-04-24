@@ -1,12 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Activity, Gauge, ThermometerSun, Waves, Zap, TrendingDown } from "lucide-react";
+import { Activity, Gauge, ThermometerSun, Waves, Zap } from "lucide-react";
 
 import { ShoppingSidebar } from "@/components/dashboard/ShoppingSidebar";
 import { RangeSelector } from "@/components/dashboard/RangeSelector";
+import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
-import { ChillerLoadChart, TemperatureChart } from "@/components/dashboard/Charts";
+import {
+  EfficiencyLineChart,
+  ConsumptionBarChart,
+  TempExtVsEfficiencyScatter,
+  EfficiencyVsLoadScatter,
+} from "@/components/dashboard/Charts";
 import { LogsTable } from "@/components/dashboard/LogsTable";
 
 import {
@@ -24,7 +30,6 @@ export const Route = createFileRoute("/")({
   component: DashboardPage,
 });
 
-// ================= UTIL =================
 function format(val: any, precision: number = 3): string {
   const n = parseFloat(val);
   if (isNaN(n) || !isFinite(n) || val === null || val === undefined) return "—";
@@ -38,25 +43,27 @@ const tierTone: Record<string, "success" | "default" | "warning" | "critical"> =
   critical: "critical",
 };
 
-// ================= PAGE =================
 function DashboardPage() {
   const [allRows, setAllRows] = useState<TrendRow[]>([]);
   const [range, setRange] = useState<RangeKey>("week");
-  const [selected, setSelected] = useState<ShoppingId>("SHOP01" as any);
+  const [selected, setSelected] = useState<ShoppingId>("BAN");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
+    let cancelled = false;
+    (async () => {
       try {
         const data = await buildDataset();
-        setAllRows(Array.isArray(data) ? data : []);
+        if (!cancelled) setAllRows(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error("Erro na carga de dados:", e);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
-    }
-    loadData();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const rangeRows = useMemo(() => filterByRange(allRows, range), [allRows, range]);
@@ -64,188 +71,162 @@ function DashboardPage() {
 
   const selectedRows = useMemo(
     () => rangeRows.filter((r) => r.shopping_id === selected),
-    [rangeRows, selected]
+    [rangeRows, selected],
   );
 
-  // ================= NETWORK =================
+  // ============= NETWORK KPIs =============
   const network = useMemo(() => {
     const op = aggregates.filter((a) => (a.avg_efficiency || 0) > 0);
-
     if (op.length === 0) {
-      return { totalKw: 0, avgEff: 0, best: null, worst: null, active: 0 };
+      return { avgEff: 0, totalKw: 0, best: null as null | typeof op[number], worst: null as null | typeof op[number], active: 0 };
     }
-
-    const avgEff =
-      op.reduce((a, b) => a + (b.avg_efficiency || 0), 0) / op.length;
-
-    const totalKw = op.reduce((a, b) => a + (b.avg_kw_total || 0), 0);
-
-    const sorted = [...op].sort(
-      (a, b) => a.avg_efficiency - b.avg_efficiency
-    );
-
+    const avgEff = op.reduce((a, b) => a + b.avg_efficiency, 0) / op.length;
+    const totalKw = op.reduce((a, b) => a + b.avg_kw_total, 0);
+    const sorted = [...op].sort((a, b) => a.avg_efficiency - b.avg_efficiency);
     return {
-      totalKw,
       avgEff,
-      best: sorted[0] || null,
-      worst: sorted[sorted.length - 1] || null,
+      totalKw,
+      best: sorted[0] ?? null,
+      worst: sorted[sorted.length - 1] ?? null,
       active: op.length,
     };
   }, [aggregates]);
 
-  // ================= KPIs (SEM FILTRO QUE QUEBRA DADOS) =================
+  // ============= SELECTED SHOPPING KPIs =============
+  // Máximas registradas (Vazão, Potência, Temp. Externa) no período.
   const selectedKpis = useMemo(() => {
-    const validData = selectedRows.filter(
-      (r) =>
-        (r.kw_ur1 || 0) > 0 ||
-        (r.kw_ur2 || 0) > 0 ||
-        (r.kw_ur3 || 0) > 0
-    );
+    if (selectedRows.length === 0) return null;
 
-    if (validData.length === 0) return null;
+    const maxVazao = selectedRows.reduce((m, r) => Math.max(m, r.vazao || 0), 0);
+    const maxKw = selectedRows.reduce((m, r) => Math.max(m, r.kw_total_planta || 0), 0);
+    const maxTempExt = selectedRows.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
 
-    const avgEff =
-      validData.reduce((a, b) => a + (b.eficiencia_kw_tr || 0), 0) /
-      validData.length;
-
-    const avgDt =
-      validData.reduce(
-        (a, b) =>
-          a +
-          Math.abs(
-            (b.temp_entrada || 0) - (b.temp_saida || 0)
-          ),
-        0
-      ) / validData.length;
-
-    const avgVazao =
-      validData.reduce((a, b) => a + (b.vazao || 0), 0) /
-      validData.length;
+    const valid = selectedRows.filter((r) => (r.eficiencia_kw_tr || 0) > 0);
+    const avgEff = valid.length
+      ? valid.reduce((a, b) => a + b.eficiencia_kw_tr, 0) / valid.length
+      : 0;
 
     return {
       eff: avgEff,
-      kw: Math.max(...validData.map((r) => r.kw_total_planta || 0)),
-      vazao: avgVazao,
-      dt: avgDt,
-      samples: validData.length,
+      maxKw,
+      maxVazao,
+      maxTempExt,
+      samples: selectedRows.length,
     };
   }, [selectedRows]);
 
-  // ================= LOADING =================
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0E14] text-white">
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="text-center animate-pulse">
           <Gauge className="h-10 w-10 text-primary mx-auto mb-4 animate-spin" />
-          <p>Conectando ao n8n local...</p>
+          <p>Carregando dados...</p>
         </div>
       </div>
     );
   }
 
-  // ================= UI =================
   return (
-    <div className="flex min-h-screen w-full bg-[#0A0E14]">
+    <div className="flex min-h-screen w-full bg-background text-foreground">
       <ShoppingSidebar
         selected={selected}
         onSelect={setSelected}
         aggregates={aggregates}
       />
 
-      <main className="flex-1 p-6 space-y-6 overflow-hidden">
-        {/* KPIs REDE */}
+      <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        {/* ===== TOPO: KPIs DE REDE ===== */}
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <KpiCard
-            label="Média Rede"
+            label="Média da Rede"
             value={format(network.avgEff)}
             unit="kW/TR"
             icon={Activity}
           />
           <KpiCard
-            label="Potência Total"
-            value={format(network.totalKw, 0)}
+            label="Vazão Máxima Registrada"
+            value={format(selectedKpis?.maxVazao, 1)}
+            unit="m³/h"
+            icon={Waves}
+            tone="default"
+          />
+          <KpiCard
+            label="Potência Máxima Registrada"
+            value={format(selectedKpis?.maxKw, 0)}
             unit="kW"
             icon={Zap}
             tone="warning"
           />
           <KpiCard
-            label="Melhor Unidade"
-            value={network.best?.shopping_id || "—"}
-            unit={format(network.best?.avg_efficiency)}
-            icon={TrendingDown}
-            tone="success"
-          />
-          <KpiCard
-            label="Maior Consumo"
-            value={network.worst?.shopping_id || "—"}
-            unit={format(network.worst?.avg_efficiency)}
-            icon={Activity}
+            label="Temp. Externa Máxima"
+            value={format(selectedKpis?.maxTempExt, 1)}
+            unit="°C"
+            icon={ThermometerSun}
             tone="critical"
           />
         </section>
 
-        {/* GRÁFICOS */}
+        {/* ===== HEADER DO SHOPPING + CONTROLES ===== */}
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-5">
+          <div>
+            <h2 className="text-2xl font-semibold">
+              <span className="text-primary">{selected}</span> ·{" "}
+              {SHOPPING_NAMES[selected]}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {selectedKpis ? `${selectedKpis.samples} logs no período` : "Sem dados no período"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <RangeSelector value={range} onChange={setRange} />
+            <ThemeToggle />
+          </div>
+        </section>
+
+        {/* ===== KPI EFICIÊNCIA DO SHOPPING ===== */}
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <KpiCard
+            label="Eficiência Média"
+            value={format(selectedKpis?.eff)}
+            unit="kW/TR"
+            icon={Activity}
+            tone={selectedKpis ? tierTone[performanceTier(selectedKpis.eff)] : "default"}
+          />
+          <KpiCard
+            label="Amostras"
+            value={selectedKpis ? String(selectedKpis.samples) : "—"}
+            unit="logs"
+            icon={Gauge}
+          />
+          <KpiCard
+            label="Período Ativo"
+            value={
+              range === "today" ? "24 h" :
+              range === "week" ? "7 d" :
+              range === "month" ? "30 d" :
+              range === "quarter" ? "90 d" : "365 d"
+            }
+            icon={Activity}
+          />
+        </section>
+
+        {/* ===== GRADE 2x2 DE GRÁFICOS ===== */}
+        <section className="grid gap-4 md:grid-cols-2">
+          <EfficiencyLineChart data={selectedRows} />
+          <ConsumptionBarChart data={selectedRows} />
+          <TempExtVsEfficiencyScatter data={selectedRows} />
+          <EfficiencyVsLoadScatter data={selectedRows} />
+        </section>
+
+        {/* ===== RANKING + LOGS ===== */}
         <section className="grid gap-6 xl:grid-cols-[400px_1fr]">
           <EfficiencyRanking
             data={aggregates}
             selected={selected}
             onSelect={setSelected}
           />
-
-          <div className="space-y-6">
-            <div className="rounded-xl border border-border bg-card p-5">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-semibold">
-                    <span className="text-primary">{selected}</span> ·{" "}
-                    {SHOPPING_NAMES[selected as any]}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedKpis
-                      ? `${selectedKpis.samples} logs`
-                      : "Sem dados"}
-                  </p>
-                </div>
-                <RangeSelector value={range} onChange={setRange} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <KpiCard
-                label="Eficiência"
-                value={format(selectedKpis?.eff)}
-                unit="kW/TR"
-                icon={Activity}
-                tone={
-                  selectedKpis
-                    ? tierTone[
-                        performanceTier(selectedKpis.eff)
-                      ]
-                    : "default"
-                }
-              />
-              <KpiCard
-                label="ΔT Médio"
-                value={format(selectedKpis?.dt, 2)}
-                unit="°C"
-                icon={ThermometerSun}
-              />
-              <KpiCard
-                label="Vazão"
-                value={format(selectedKpis?.vazao, 1)}
-                unit="m³/h"
-                icon={Waves}
-              />
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <TemperatureChart data={selectedRows} />
-              <ChillerLoadChart data={selectedRows} />
-            </div>
-          </div>
+          <LogsTable rows={selectedRows} />
         </section>
-
-        <LogsTable rows={selectedRows} />
       </main>
     </div>
   );

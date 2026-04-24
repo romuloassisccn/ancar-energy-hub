@@ -76,8 +76,8 @@ export function LogsTable({ rows }: LogsTableProps) {
                 <td className="px-2 py-1.5 text-right">{fmt(r.kw_ur1, 1)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.kw_ur2, 1)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.kw_ur3, 1)}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.kw_ur4, 1)}</td>
-                <td className="px-2 py-1.5 text-right">{fmt(r.kw_ur5, 1)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt((r as any).kw_ur4, 1)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt((r as any).kw_ur5, 1)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(r.kw_perifericos, 1)}</td>
                 <td className="px-2 py-1.5 text-right text-foreground">{fmt(r.kw_total_planta, 1)}</td>
                 <td className="px-3 py-1.5 text-right font-semibold text-primary">
