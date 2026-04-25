@@ -33,18 +33,28 @@ export const SHOPPING_NAMES: Record<ShoppingId, string> = {
 // TYPES - Interface dos Dados
 // -----------------------------
 export interface TrendRow {
-  timestamp: string;      // Corresponde ao data_hora do n8n
+  timestamp: string;
   shopping_id: ShoppingId;
-  temp_ext: number;
-  vazao: number;
-  kw_ur1: number;
-  kw_ur2: number;
-  kw_ur3: number;
-  kw_ur4: number;
-  kw_ur5: number;
-  kw_perifericos: number;
-  kw_total_planta: number;
-  eficiencia_kw_tr: number;
+  temp_ext: number | null;
+  vazao: number | null;
+  tr_ur1: number | null;
+  tr_ur2: number | null;
+  tr_ur3: number | null;
+  tr_ur4: number | null;
+  tr_ur5: number | null;
+  kw_ur1: number | null;
+  kw_ur2: number | null;
+  kw_ur3: number | null;
+  kw_ur4: number | null;
+  kw_ur5: number | null;
+  kw_perifericos: number | null;
+  kw_total_planta: number | null;
+  kwtr_ur1: number | null;
+  kwtr_ur2: number | null;
+  kwtr_ur3: number | null;
+  kwtr_ur4: number | null;
+  kwtr_ur5: number | null;
+  eficiencia_kw_tr: number | null;
 }
 
 export interface ShoppingAggregate {
@@ -56,6 +66,12 @@ export interface ShoppingAggregate {
 }
 
 export type RangeKey = "today" | "week" | "month" | "quarter" | "year";
+
+function toNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
 
 // -----------------------------
 // FETCH REAL (Conexão com n8n)
@@ -72,26 +88,40 @@ export async function buildDataset(): Promise<TrendRow[]> {
     const rows = Array.isArray(data) ? data : [data];
 
     return rows.map((r: any) => ({
-      timestamp: r.data_hora, // Mapeado do n8n
+      timestamp: String(r.timestamp ?? r.data_hora ?? ""),
       
       shopping_id: String(r.shopping_id || "")
         .trim()
         .toUpperCase() as ShoppingId,
 
-      temp_ext: Number(r.temp_ext) || 0,
-      vazao: Number(r.vazao) || 0,
+      temp_ext: toNumberOrNull(r.temp_ext),
+      vazao: toNumberOrNull(r.vazao),
+
+      // Carga térmica por chiller
+      tr_ur1: toNumberOrNull(r.tr_ur1),
+      tr_ur2: toNumberOrNull(r.tr_ur2),
+      tr_ur3: toNumberOrNull(r.tr_ur3),
+      tr_ur4: toNumberOrNull(r.tr_ur4),
+      tr_ur5: toNumberOrNull(r.tr_ur5),
 
       // Chillers
-      kw_ur1: Number(r.kw_ur1) || 0,
-      kw_ur2: Number(r.kw_ur2) || 0,
-      kw_ur3: Number(r.kw_ur3) || 0,
-      kw_ur4: Number(r.kw_ur4) || 0,
-      kw_ur5: Number(r.kw_ur5) || 0,
+      kw_ur1: toNumberOrNull(r.kw_ur1),
+      kw_ur2: toNumberOrNull(r.kw_ur2),
+      kw_ur3: toNumberOrNull(r.kw_ur3),
+      kw_ur4: toNumberOrNull(r.kw_ur4),
+      kw_ur5: toNumberOrNull(r.kw_ur5),
+
+      // Eficiência individual por chiller
+      kwtr_ur1: toNumberOrNull(r.kwtr_ur1),
+      kwtr_ur2: toNumberOrNull(r.kwtr_ur2),
+      kwtr_ur3: toNumberOrNull(r.kwtr_ur3),
+      kwtr_ur4: toNumberOrNull(r.kwtr_ur4),
+      kwtr_ur5: toNumberOrNull(r.kwtr_ur5),
 
       // Planta Geral
-      kw_perifericos: Number(r.kw_perifericos) || 0,
-      kw_total_planta: Number(r.kw_total_planta) || 0,
-      eficiencia_kw_tr: Number(r.eficiencia_kw_tr) || 0,
+      kw_perifericos: toNumberOrNull(r.kw_perifericos),
+      kw_total_planta: toNumberOrNull(r.kw_total_planta),
+      eficiencia_kw_tr: toNumberOrNull(r.eficiencia_kw_tr),
     }));
   } catch (err) {
     console.error("Erro ao buscar dados do n8n:", err);
@@ -140,11 +170,16 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
       };
     }
 
-    const avgEff =
-      arr.reduce((a, b) => a + (b.eficiencia_kw_tr || 0), 0) / arr.length;
+    const effRows = arr.filter((r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0);
+    const kwRows = arr.filter((r) => typeof r.kw_total_planta === "number" && r.kw_total_planta > 0);
 
-    const avgKw =
-      arr.reduce((a, b) => a + (b.kw_total_planta || 0), 0) / arr.length;
+    const avgEff = effRows.length
+      ? effRows.reduce((a, b) => a + (b.eficiencia_kw_tr ?? 0), 0) / effRows.length
+      : 0;
+
+    const avgKw = kwRows.length
+      ? kwRows.reduce((a, b) => a + (b.kw_total_planta ?? 0), 0) / kwRows.length
+      : 0;
 
     return {
       shopping_id: id,

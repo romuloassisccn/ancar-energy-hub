@@ -143,11 +143,11 @@ function DashboardPage() {
     );
 
     const valid = selectedRows.filter(
-      (r) => (r.eficiencia_kw_tr || 0) > 0
+      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0
     );
 
     const avgEff = valid.length
-      ? valid.reduce((a, b) => a + b.eficiencia_kw_tr, 0) /
+      ? valid.reduce((a, b) => a + (b.eficiencia_kw_tr ?? 0), 0) /
         valid.length
       : 0;
 

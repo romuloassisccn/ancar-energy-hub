@@ -17,6 +17,19 @@ import type { TrendRow } from "@/lib/mock-data";
 
 const axisStyle = { fontSize: 10, fill: "hsl(var(--muted-foreground))" };
 
+const chillerSeries = [
+  { id: "UR1", kw: "kw_ur1", tr: "tr_ur1", kwtr: "kwtr_ur1", color: "var(--chart-1)" },
+  { id: "UR2", kw: "kw_ur2", tr: "tr_ur2", kwtr: "kwtr_ur2", color: "var(--chart-2)" },
+  { id: "UR3", kw: "kw_ur3", tr: "tr_ur3", kwtr: "kwtr_ur3", color: "var(--chart-3)" },
+  { id: "UR4", kw: "kw_ur4", tr: "tr_ur4", kwtr: "kwtr_ur4", color: "var(--chart-4)" },
+  { id: "UR5", kw: "kw_ur5", tr: "tr_ur5", kwtr: "kwtr_ur5", color: "var(--chart-5)" },
+] as const;
+
+function num(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 // CORREÇÃO: Função melhorada para tratar formato ISO do PostgreSQL e do WebCTRL
 function shortLabel(ts: any): string {
   if (!ts) return "";
@@ -83,6 +96,11 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   const chartData = sortData(data).map((r) => ({
     label: shortLabel(r.timestamp),
     eficiencia_kw_tr: r.eficiencia_kw_tr,
+    kwtr_ur1: r.kwtr_ur1,
+    kwtr_ur2: r.kwtr_ur2,
+    kwtr_ur3: r.kwtr_ur3,
+    kwtr_ur4: r.kwtr_ur4,
+    kwtr_ur5: r.kwtr_ur5,
   }));
 
   return (
@@ -98,14 +116,26 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Line
-              name="kW/TR"
+              name="Média Planta"
               type="monotone"
               dataKey="eficiencia_kw_tr"
               stroke="var(--chart-1)"
               dot={false}
               strokeWidth={2}
-              connectNulls // Evita buracos se faltar um dado isolado
+              connectNulls={true}
             />
+            {chillerSeries.map((series) => (
+              <Line
+                key={series.kwtr}
+                name={series.id}
+                type="monotone"
+                dataKey={series.kwtr}
+                stroke={series.color}
+                dot={false}
+                strokeWidth={1.6}
+                connectNulls={true}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -118,9 +148,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
  */
 export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
   const keys: { key: keyof TrendRow; label: string; color: string }[] = [
-    { key: "kw_ur1", label: "UR1", color: "var(--chart-1)" },
-    { key: "kw_ur2", label: "UR2", color: "var(--chart-2)" },
-    { key: "kw_ur3", label: "UR3", color: "var(--chart-3)" },
+    ...chillerSeries.map((series) => ({ key: series.kw as keyof TrendRow, label: series.id, color: series.color })),
     { key: "kw_perifericos", label: "Perif.", color: "var(--chart-6)" },
   ];
 
@@ -128,7 +156,7 @@ export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
     data.length === 0
       ? []
       : keys.map(({ key, label, color }) => {
-          const validData = data.filter(r => Number(r[key]) > 0);
+          const validData = data.filter((r) => num(r[key]) !== null);
           const sum = validData.reduce((a, r) => a + (Number(r[key]) || 0), 0);
           return { name: label, kw: validData.length > 0 ? sum / validData.length : 0, fill: color };
         });
@@ -156,13 +184,18 @@ export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
  * 3) SCATTER — Temp. Externa × kW/TR
  */
 export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
-  const chartData = data
-    .filter((r) => (Number(r.temp_ext) || 0) > 0 && (Number(r.eficiencia_kw_tr) || 0) > 0)
-    .map((r) => ({ temp_ext: r.temp_ext, kw_tr: r.eficiencia_kw_tr }));
+  const chartData = chillerSeries.map((series) => ({
+    id: series.id,
+    color: series.color,
+    points: data
+      .map((r) => ({ temp_ext: num(r.temp_ext), kw_tr: num(r[series.kwtr]) }))
+      .filter((point): point is { temp_ext: number; kw_tr: number } => point.temp_ext !== null && point.kw_tr !== null),
+  }));
+  const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
     <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática">
-      {chartData.length === 0 ? (
+      {!hasData ? (
         <EmptyState />
       ) : (
         <ResponsiveContainer width="100%" height={240}>
@@ -186,7 +219,10 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
             />
             <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Scatter data={chartData} fill="var(--chart-3)" opacity={0.7} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {chartData.map((series) => (
+              <Scatter key={series.id} name={series.id} data={series.points} fill={series.color} opacity={0.7} />
+            ))}
           </ScatterChart>
         </ResponsiveContainer>
       )}
@@ -198,16 +234,18 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
  * 4) SCATTER — kW/TR × Carga (TR)
  */
 export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
-  const chartData = data
-    .map((r) => {
-      const carga = Number(r.carga_tr) || 0;
-      return { carga_tr: carga, kw_tr: r.eficiencia_kw_tr };
-    })
-    .filter((d) => d.carga_tr > 0 && d.kw_tr > 0);
+  const chartData = chillerSeries.map((series) => ({
+    id: series.id,
+    color: series.color,
+    points: data
+      .map((r) => ({ carga_tr: num(r[series.tr]), kw_tr: num(r[series.kwtr]) }))
+      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null),
+  }));
+  const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
     <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação">
-      {chartData.length === 0 ? (
+      {!hasData ? (
         <EmptyState />
       ) : (
         <ResponsiveContainer width="100%" height={240}>
@@ -230,7 +268,10 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
             />
             <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Scatter data={chartData} fill="var(--chart-2)" opacity={0.7} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {chartData.map((series) => (
+              <Scatter key={series.id} name={series.id} data={series.points} fill={series.color} opacity={0.7} />
+            ))}
           </ScatterChart>
         </ResponsiveContainer>
       )}
