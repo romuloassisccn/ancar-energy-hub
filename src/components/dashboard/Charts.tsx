@@ -33,6 +33,7 @@ function num(value: unknown): number | null {
 
 function parseTimestampMs(ts: unknown): number | null {
   if (!ts) return null;
+  if (typeof ts === "number") return Number.isFinite(ts) ? ts : null;
   const strTs = String(ts);
 
   const iso = strTs.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
