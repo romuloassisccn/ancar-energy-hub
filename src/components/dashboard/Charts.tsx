@@ -26,30 +26,58 @@ const chillerSeries = [
 ] as const;
 
 function num(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseTimestampMs(ts: unknown): number | null {
+  if (!ts) return "";
+  const strTs = String(ts);
+
+  const iso = strTs.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (iso) {
+    return new Date(
+      Number(iso[1]),
+      Number(iso[2]) - 1,
+      Number(iso[3]),
+      Number(iso[4] ?? 0),
+      Number(iso[5] ?? 0),
+      Number(iso[6] ?? 0),
+    ).getTime();
+  }
+
+  const br = strTs.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (br) {
+    return new Date(
+      Number(br[3]),
+      Number(br[2]) - 1,
+      Number(br[1]),
+      Number(br[4] ?? 0),
+      Number(br[5] ?? 0),
+      Number(br[6] ?? 0),
+    ).getTime();
+  }
+
+  const parsed = new Date(strTs).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 // CORREÇÃO: Função melhorada para tratar formato ISO do PostgreSQL e do WebCTRL
 function shortLabel(ts: any): string {
-  if (!ts) return "";
-  const strTs = String(ts);
-  
-  // Se vier do Banco (ISO): 2026-04-22T20:00:00.000Z
-  if (strTs.includes("T")) {
-    return strTs.split("T")[1]?.slice(0, 5) ?? strTs;
-  }
-  // Se vier do CSV (WebCTRL): 22/04/2026 20:00:00
-  if (strTs.includes(" ")) {
-    return strTs.split(" ")[1]?.slice(0, 5) ?? strTs;
-  }
-  return strTs.slice(0, 5);
+  const ms = parseTimestampMs(ts);
+  if (ms === null) return String(ts ?? "").slice(0, 5);
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(ms));
 }
 
 // CORREÇÃO: Função para garantir que o gráfico siga a linha do tempo correta
 function sortData(data: TrendRow[]) {
   return [...data].sort((a, b) => {
-    return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
+    return (parseTimestampMs(a.timestamp) ?? 0) - (parseTimestampMs(b.timestamp) ?? 0);
   });
 }
 
