@@ -32,7 +32,7 @@ function num(value: unknown): number | null {
 }
 
 function parseTimestampMs(ts: unknown): number | null {
-  if (!ts) return "";
+  if (!ts) return null;
   const strTs = String(ts);
 
   const iso = strTs.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
@@ -121,15 +121,18 @@ function EmptyState({ height = 240 }: { height?: number }) {
  */
 export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
-  const chartData = sortData(data).map((r) => ({
-    label: shortLabel(r.timestamp),
-    eficiencia_kw_tr: r.eficiencia_kw_tr,
-    kwtr_ur1: r.kwtr_ur1,
-    kwtr_ur2: r.kwtr_ur2,
-    kwtr_ur3: r.kwtr_ur3,
-    kwtr_ur4: r.kwtr_ur4,
-    kwtr_ur5: r.kwtr_ur5,
-  }));
+  const chartData = sortData(data)
+    .map((r) => ({
+      timestampMs: parseTimestampMs(r.timestamp),
+      label: shortLabel(r.timestamp),
+      eficiencia_kw_tr: r.eficiencia_kw_tr,
+      kwtr_ur1: r.kwtr_ur1,
+      kwtr_ur2: r.kwtr_ur2,
+      kwtr_ur3: r.kwtr_ur3,
+      kwtr_ur4: r.kwtr_ur4,
+      kwtr_ur5: r.kwtr_ur5,
+    }))
+    .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
   return (
     <ChartFrame title="Eficiência kW/TR" subtitle="série temporal">
@@ -139,7 +142,13 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-            <XAxis dataKey="label" tick={axisStyle} />
+            <XAxis
+              type="number"
+              dataKey="timestampMs"
+              domain={["dataMin", "dataMax"]}
+              tick={axisStyle}
+              tickFormatter={(value) => shortLabel(value)}
+            />
             <YAxis tick={axisStyle} />
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: 11 }} />
