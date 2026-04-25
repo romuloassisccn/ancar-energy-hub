@@ -226,8 +226,8 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
     id: series.id,
     color: series.color,
     points: data
-      .map((r) => ({ temp_ext: num(r.temp_ext), kw_tr: num(r[series.kwtr]) }))
-      .filter((point): point is { temp_ext: number; kw_tr: number } => point.temp_ext !== null && point.kw_tr !== null),
+      .map((r) => ({ x: num(r.temp_ext), y: num(r[series.kwtr]) }))
+      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
@@ -241,16 +241,15 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               type="number"
-              dataKey="temp_ext"
+              dataKey="x"
               name="Temp. Ext"
               unit="°C"
               domain={['auto', 'auto']}
               tick={axisStyle}
             />
-            <XAxis dataKey="label" tick={axisStyle} hide id="hidden-x" />
             <YAxis
               type="number"
-              dataKey="kw_tr"
+              dataKey="y"
               name="kW/TR"
               domain={['auto', 'auto']}
               tick={axisStyle}

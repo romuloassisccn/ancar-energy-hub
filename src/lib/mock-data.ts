@@ -69,7 +69,8 @@ export type RangeKey = "today" | "week" | "month" | "quarter" | "year";
 
 function toNumberOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
-  const number = Number(value);
+  const normalized = typeof value === "string" ? value.trim().replace(",", ".") : value;
+  const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
 }
 
@@ -95,7 +96,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
         .trim()
         .toUpperCase() as ShoppingId,
 
-      temp_ext: toNumberOrNull(r.temp_ext),
+      temp_ext: toNumberOrNull(r.temp_ext ?? r.temp),
       vazao: toNumberOrNull(r.vazao),
 
       // Carga térmica por chiller
