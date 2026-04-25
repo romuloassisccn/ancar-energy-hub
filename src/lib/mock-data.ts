@@ -78,7 +78,8 @@ function toNumberOrNull(value: unknown): number | null {
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    // Se estiver usando o workflow ativo, mude para /webhook/ (sem o -test)
+    // O webhook deve retornar todo o histórico da tabela trends_shoppings,
+    // sem LIMIT e sem filtro fixo. Os períodos são aplicados na visualização.
     const res = await fetch("http://localhost:5678/webhook/dados-ancal");
     const data = await res.json();
 
@@ -133,24 +134,90 @@ export async function buildDataset(): Promise<TrendRow[]> {
 // RANGE FILTER (Filtro Temporal)
 // -----------------------------
 export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
-  const now = Date.now();
+  if (range === "year") return rows;
 
-  const hours =
-    range === "today" ? 24 :
-    range === "week" ? 24 * 7 :
-    range === "month" ? 24 * 30 :
-    range === "quarter" ? 24 * 90 :
-    24 * 365;
-
-  const cutoff = now - hours * 3600_000;
+  const now = getSaoPauloDateParts(new Date());
+  const cutoff = getRangeCutoff(now, range);
 
   return rows.filter((r) => {
-    // Formata para ISO para garantir que o JavaScript entenda a data corretamente
-    const isoDate = r.timestamp ? r.timestamp.replace(" ", "T") : "";
-    const ts = new Date(isoDate).getTime();
-    
-    return true;
+    const rowDate = parsePostgresTimestamp(r.timestamp);
+    if (!rowDate) return false;
+
+    return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, now) <= 0;
   });
+}
+
+function getSaoPauloDateParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+
+  return {
+    year: value("year"),
+    month: value("month"),
+    day: value("day"),
+    hour: value("hour"),
+    minute: value("minute"),
+    second: value("second"),
+  };
+}
+
+function parsePostgresTimestamp(timestamp: string) {
+  if (!timestamp) return null;
+
+  const match = String(timestamp).match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+
+  if (!match) return null;
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4] ?? 0),
+    minute: Number(match[5] ?? 0),
+    second: Number(match[6] ?? 0),
+  };
+}
+
+function getRangeCutoff(
+  now: ReturnType<typeof getSaoPauloDateParts>,
+  range: Exclude<RangeKey, "year">,
+) {
+  if (range === "today") return { ...now, hour: 0, minute: 0, second: 0 };
+
+  const monthsBack = range === "month" ? 1 : range === "quarter" ? 3 : 0;
+  const daysBack = range === "week" ? 7 : 0;
+  const date = new Date(Date.UTC(now.year, now.month - 1 - monthsBack, now.day - daysBack, 0, 0, 0));
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: 0,
+    minute: 0,
+    second: 0,
+  };
+}
+
+function compareDateParts(a: NonNullable<ReturnType<typeof parsePostgresTimestamp>>, b: ReturnType<typeof getSaoPauloDateParts>) {
+  const keys = ["year", "month", "day", "hour", "minute", "second"] as const;
+
+  for (const key of keys) {
+    if (a[key] !== b[key]) return a[key] - b[key];
+  }
+
+  return 0;
 }
 
 // -----------------------------
