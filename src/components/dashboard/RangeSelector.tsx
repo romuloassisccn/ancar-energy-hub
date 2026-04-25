@@ -11,7 +11,7 @@ const options: { key: RangeKey; label: string }[] = [
   { key: "week", label: "Semana" },
   { key: "month", label: "Mês" },
   { key: "quarter", label: "3 Meses" },
-  { key: "year", label: "1 Ano" },
+  { key: "year", label: "Tudo" },
 ];
 
 export function RangeSelector({ value, onChange }: RangeSelectorProps) {

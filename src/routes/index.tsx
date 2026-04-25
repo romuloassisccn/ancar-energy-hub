@@ -267,7 +267,7 @@ function DashboardPage() {
                 ? "30d"
                 : range === "quarter"
                 ? "90d"
-                : "365d"
+                : "Tudo"
             }
           />
         </section>
