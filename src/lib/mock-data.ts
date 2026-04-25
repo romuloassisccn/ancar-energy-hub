@@ -170,11 +170,16 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
       };
     }
 
-    const avgEff =
-      arr.reduce((a, b) => a + (b.eficiencia_kw_tr || 0), 0) / arr.length;
+    const effRows = arr.filter((r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0);
+    const kwRows = arr.filter((r) => typeof r.kw_total_planta === "number" && r.kw_total_planta > 0);
 
-    const avgKw =
-      arr.reduce((a, b) => a + (b.kw_total_planta || 0), 0) / arr.length;
+    const avgEff = effRows.length
+      ? effRows.reduce((a, b) => a + (b.eficiencia_kw_tr ?? 0), 0) / effRows.length
+      : 0;
+
+    const avgKw = kwRows.length
+      ? kwRows.reduce((a, b) => a + (b.kw_total_planta ?? 0), 0) / kwRows.length
+      : 0;
 
     return {
       shopping_id: id,
