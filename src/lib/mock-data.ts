@@ -106,6 +106,29 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+function mergeTrendRows(rows: TrendRow[]): TrendRow[] {
+  const merged = new Map<string, TrendRow>();
+
+  rows.forEach((row) => {
+    const key = `${row.shopping_id}-${row.timestamp}`;
+    const current = merged.get(key);
+
+    if (!current) {
+      merged.set(key, row);
+      return;
+    }
+
+    (Object.keys(row) as Array<keyof TrendRow>).forEach((field) => {
+      const value = row[field];
+      if (value !== null && value !== undefined && value !== "") {
+        (current as Record<keyof TrendRow, TrendRow[keyof TrendRow]>)[field] = value;
+      }
+    });
+  });
+
+  return [...merged.values()];
+}
+
 // -----------------------------
 // FETCH REAL (Conexão com n8n)
 // -----------------------------
@@ -121,7 +144,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
     // Garante que os dados sejam tratados como array (mesmo que venha 1 item só)
     const rows = Array.isArray(data) ? data : [data];
 
-    return rows.map((r: any) => ({
+    const normalizedRows = rows.map((r: any) => ({
       timestamp: String(r.timestamp ?? r.data_hora ?? ""),
       
       shopping_id: String(r.shopping_id || "")
@@ -156,22 +179,22 @@ export async function buildDataset(): Promise<TrendRow[]> {
       kw_perifericos: toNumberOrNull(r.kw_perifericos),
       kw_total_planta: toNumberOrNull(r.kw_total_planta),
       eficiencia_kw_tr: toNumberOrNull(r.eficiencia_kw_tr),
-      temp_amb1: toNumberOrNull(r.temp_amb1),
-      temp_amb2: toNumberOrNull(r.temp_amb2),
-      temp_amb3: toNumberOrNull(r.temp_amb3),
-      temp_amb4: toNumberOrNull(r.temp_amb4),
-      temp_amb5: toNumberOrNull(r.temp_amb5),
-      temp_amb6: toNumberOrNull(r.temp_amb6),
-      temp_amb7: toNumberOrNull(r.temp_amb7),
-      temp_amb8: toNumberOrNull(r.temp_amb8),
-      temp_amb9: toNumberOrNull(r.temp_amb9),
-      temp_amb10: toNumberOrNull(r.temp_amb10),
-      temp_amb11: toNumberOrNull(r.temp_amb11),
-      temp_amb12: toNumberOrNull(r.temp_amb12),
-      temp_amb13: toNumberOrNull(r.temp_amb13),
-      temp_amb14: toNumberOrNull(r.temp_amb14),
-      temp_amb15: toNumberOrNull(r.temp_amb15),
-      temp_amb16: toNumberOrNull(r.temp_amb16),
+      temp_amb1: toNumberOrNull(r.temp_amb1 ?? r.tem_amb1),
+      temp_amb2: toNumberOrNull(r.temp_amb2 ?? r.tem_amb2),
+      temp_amb3: toNumberOrNull(r.temp_amb3 ?? r.tem_amb3),
+      temp_amb4: toNumberOrNull(r.temp_amb4 ?? r.tem_amb4),
+      temp_amb5: toNumberOrNull(r.temp_amb5 ?? r.tem_amb5),
+      temp_amb6: toNumberOrNull(r.temp_amb6 ?? r.tem_amb6),
+      temp_amb7: toNumberOrNull(r.temp_amb7 ?? r.tem_amb7),
+      temp_amb8: toNumberOrNull(r.temp_amb8 ?? r.tem_amb8),
+      temp_amb9: toNumberOrNull(r.temp_amb9 ?? r.tem_amb9),
+      temp_amb10: toNumberOrNull(r.temp_amb10 ?? r.tem_amb10),
+      temp_amb11: toNumberOrNull(r.temp_amb11 ?? r.tem_amb11),
+      temp_amb12: toNumberOrNull(r.temp_amb12 ?? r.tem_amb12),
+      temp_amb13: toNumberOrNull(r.temp_amb13 ?? r.tem_amb13),
+      temp_amb14: toNumberOrNull(r.temp_amb14 ?? r.tem_amb14),
+      temp_amb15: toNumberOrNull(r.temp_amb15 ?? r.tem_amb15),
+      temp_amb16: toNumberOrNull(r.temp_amb16 ?? r.tem_amb16),
       co_amb1: toNumberOrNull(r.co_amb1),
       co_amb2: toNumberOrNull(r.co_amb2),
       co_amb3: toNumberOrNull(r.co_amb3),
@@ -189,6 +212,8 @@ export async function buildDataset(): Promise<TrendRow[]> {
       co_amb15: toNumberOrNull(r.co_amb15),
       co_amb16: toNumberOrNull(r.co_amb16),
     }));
+
+    return mergeTrendRows(normalizedRows);
   } catch (err) {
     console.error("Erro ao buscar dados do n8n:", err);
     return [];
