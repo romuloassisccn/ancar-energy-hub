@@ -24,6 +24,8 @@ function fmtTs(ts: string) {
   }
 }
 
+const ambientSensorIndexes = Array.from({ length: 16 }, (_, index) => index + 1);
+
 export function LogsTable({ rows }: LogsTableProps) {
   // Garantir que rows é um array antes de fazer o spread
   const safeRows = Array.isArray(rows) ? rows : [];
@@ -71,6 +73,16 @@ export function LogsTable({ rows }: LogsTableProps) {
               <th className="px-2 py-2 text-right font-medium">kW/TR4</th>
               <th className="px-2 py-2 text-right font-medium">kW/TR5</th>
               <th className="px-3 py-2 text-right font-medium text-primary">Global</th>
+              {ambientSensorIndexes.map((index) => (
+                <th key={`temp-amb-head-${index}`} className="px-2 py-2 text-right font-medium">
+                  Temp Amb{index}
+                </th>
+              ))}
+              {ambientSensorIndexes.map((index) => (
+                <th key={`co-amb-head-${index}`} className="px-2 py-2 text-right font-medium">
+                  CO2 Amb{index}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="font-mono tabular-nums">
@@ -100,11 +112,21 @@ export function LogsTable({ rows }: LogsTableProps) {
                   {/* Corrigido: Usando a função fmt segura em vez de .toFixed direto */}
                   {fmt(r.eficiencia_kw_tr, 3)}
                 </td>
+                {ambientSensorIndexes.map((index) => (
+                  <td key={`temp-amb-${r.timestamp}-${idx}-${index}`} className="px-2 py-1.5 text-right">
+                    {fmt(r[`temp_amb${index}` as keyof TrendRow], 1)}
+                  </td>
+                ))}
+                {ambientSensorIndexes.map((index) => (
+                  <td key={`co-amb-${r.timestamp}-${idx}-${index}`} className="px-2 py-1.5 text-right">
+                    {fmt(r[`co_amb${index}` as keyof TrendRow], 0)}
+                  </td>
+                ))}
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={22} className="py-8 text-center text-muted-foreground">
+                <td colSpan={54} className="py-8 text-center text-muted-foreground">
                   Nenhum registro no período selecionado.
                 </td>
               </tr>
