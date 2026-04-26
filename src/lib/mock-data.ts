@@ -202,11 +202,16 @@ export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
   if (range === "year") return rows;
 
   const now = getSaoPauloDateParts(new Date());
+  const todayStart = { ...now, hour: 0, minute: 0, second: 0 };
   const cutoff = getRangeCutoff(now, range);
 
   return rows.filter((r) => {
     const rowDate = parsePostgresTimestamp(r.timestamp);
     if (!rowDate) return false;
+
+    if (range === "today") {
+      return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, todayStart) < 0;
+    }
 
     return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, now) <= 0;
   });
@@ -259,7 +264,18 @@ function getRangeCutoff(
   now: ReturnType<typeof getSaoPauloDateParts>,
   range: Exclude<RangeKey, "year">,
 ) {
-  if (range === "today") return { ...now, hour: 0, minute: 0, second: 0 };
+  if (range === "today") {
+    const yesterday = new Date(Date.UTC(now.year, now.month - 1, now.day - 1, 0, 0, 0));
+
+    return {
+      year: yesterday.getUTCFullYear(),
+      month: yesterday.getUTCMonth() + 1,
+      day: yesterday.getUTCDate(),
+      hour: 0,
+      minute: 0,
+      second: 0,
+    };
+  }
 
   const monthsBack = range === "month" ? 1 : range === "quarter" ? 3 : 0;
   const daysBack = range === "week" ? 7 : 0;
