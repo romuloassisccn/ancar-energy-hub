@@ -336,3 +336,89 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
     </ChartFrame>
   );
 }
+
+function AmbientLineChart({
+  data,
+  title,
+  subtitle,
+  unit,
+  series,
+}: {
+  data: TrendRow[];
+  title: string;
+  subtitle: string;
+  unit: string;
+  series: { id: string; key: keyof TrendRow; color: string }[];
+}) {
+  const chartData = sortData(data)
+    .map((r) => ({
+      timestampMs: parseTimestampMs(r.timestamp),
+      label: shortLabel(r.timestamp),
+      ...Object.fromEntries(series.map((item) => [item.key, num(r[item.key])])),
+    }))
+    .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
+
+  const hasData = chartData.some((row) => series.some((item) => num(row[item.key]) !== null));
+
+  return (
+    <ChartFrame title={title} subtitle={subtitle}>
+      {!hasData ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis
+              type="number"
+              dataKey="timestampMs"
+              domain={["dataMin", "dataMax"]}
+              tick={axisStyle}
+              tickMargin={8}
+              tickFormatter={(value) => shortLabel(value)}
+            />
+            <YAxis tick={axisStyle} tickMargin={8} unit={unit} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {series.map((item, index) => (
+              <Line
+                key={String(item.key)}
+                name={item.id}
+                type="monotone"
+                dataKey={String(item.key)}
+                stroke={item.color}
+                dot={false}
+                strokeWidth={1.4}
+                strokeDasharray={index >= ambientColors.length ? "4 3" : undefined}
+                connectNulls={true}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
+  );
+}
+
+export function AmbientTemperatureChart({ data }: { data: TrendRow[] }) {
+  return (
+    <AmbientLineChart
+      data={data}
+      title="Temperatura Ambiente"
+      subtitle="temp_amb1–16"
+      unit="°C"
+      series={tempAmbSeries}
+    />
+  );
+}
+
+export function AmbientCOChart({ data }: { data: TrendRow[] }) {
+  return (
+    <AmbientLineChart
+      data={data}
+      title="CO Ambiente"
+      subtitle="co_amb1–16"
+      unit=" ppm"
+      series={coAmbSeries}
+    />
+  );
+}
