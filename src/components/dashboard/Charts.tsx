@@ -405,8 +405,8 @@ export function AmbientTemperatureChart({ data }: { data: TrendRow[] }) {
   return (
     <AmbientLineChart
       data={data}
-      title="Temperatura Ambiente"
-      subtitle="temp_amb1–16"
+      title="Temperaturas Mall"
+      subtitle="CLIMATIZAÇÃO"
       unit="°C"
       series={tempAmbSeries}
     />
@@ -417,8 +417,8 @@ export function AmbientCOChart({ data }: { data: TrendRow[] }) {
   return (
     <AmbientLineChart
       data={data}
-      title="CO Ambiente"
-      subtitle="co_amb1–16"
+      title="CO2 Mall"
+      subtitle="QUALIDADE DO AR"
       unit=" ppm"
       series={coAmbSeries}
     />
