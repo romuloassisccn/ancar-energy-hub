@@ -8,6 +8,8 @@ import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
 import {
+  AmbientCOChart,
+  AmbientTemperatureChart,
   EfficiencyLineChart,
   ConsumptionBarChart,
   TempExtVsEfficiencyScatter,
@@ -277,7 +279,9 @@ function DashboardPage() {
           <EfficiencyLineChart data={selectedRows} />
           <ConsumptionBarChart data={selectedRows} />
           <TempExtVsEfficiencyScatter data={selectedRows} />
+          <AmbientTemperatureChart data={selectedRows} />
           <EfficiencyVsLoadScatter data={selectedRows} />
+          <AmbientCOChart data={selectedRows} />
         </section>
 
         {/* RANKING + LOG */}

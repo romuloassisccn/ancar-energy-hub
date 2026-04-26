@@ -55,6 +55,38 @@ export interface TrendRow {
   kwtr_ur4: number | null;
   kwtr_ur5: number | null;
   eficiencia_kw_tr: number | null;
+  temp_amb1: number | null;
+  temp_amb2: number | null;
+  temp_amb3: number | null;
+  temp_amb4: number | null;
+  temp_amb5: number | null;
+  temp_amb6: number | null;
+  temp_amb7: number | null;
+  temp_amb8: number | null;
+  temp_amb9: number | null;
+  temp_amb10: number | null;
+  temp_amb11: number | null;
+  temp_amb12: number | null;
+  temp_amb13: number | null;
+  temp_amb14: number | null;
+  temp_amb15: number | null;
+  temp_amb16: number | null;
+  co_amb1: number | null;
+  co_amb2: number | null;
+  co_amb3: number | null;
+  co_amb4: number | null;
+  co_amb5: number | null;
+  co_amb6: number | null;
+  co_amb7: number | null;
+  co_amb8: number | null;
+  co_amb9: number | null;
+  co_amb10: number | null;
+  co_amb11: number | null;
+  co_amb12: number | null;
+  co_amb13: number | null;
+  co_amb14: number | null;
+  co_amb15: number | null;
+  co_amb16: number | null;
 }
 
 export interface ShoppingAggregate {
@@ -124,6 +156,38 @@ export async function buildDataset(): Promise<TrendRow[]> {
       kw_perifericos: toNumberOrNull(r.kw_perifericos),
       kw_total_planta: toNumberOrNull(r.kw_total_planta),
       eficiencia_kw_tr: toNumberOrNull(r.eficiencia_kw_tr),
+      temp_amb1: toNumberOrNull(r.temp_amb1),
+      temp_amb2: toNumberOrNull(r.temp_amb2),
+      temp_amb3: toNumberOrNull(r.temp_amb3),
+      temp_amb4: toNumberOrNull(r.temp_amb4),
+      temp_amb5: toNumberOrNull(r.temp_amb5),
+      temp_amb6: toNumberOrNull(r.temp_amb6),
+      temp_amb7: toNumberOrNull(r.temp_amb7),
+      temp_amb8: toNumberOrNull(r.temp_amb8),
+      temp_amb9: toNumberOrNull(r.temp_amb9),
+      temp_amb10: toNumberOrNull(r.temp_amb10),
+      temp_amb11: toNumberOrNull(r.temp_amb11),
+      temp_amb12: toNumberOrNull(r.temp_amb12),
+      temp_amb13: toNumberOrNull(r.temp_amb13),
+      temp_amb14: toNumberOrNull(r.temp_amb14),
+      temp_amb15: toNumberOrNull(r.temp_amb15),
+      temp_amb16: toNumberOrNull(r.temp_amb16),
+      co_amb1: toNumberOrNull(r.co_amb1),
+      co_amb2: toNumberOrNull(r.co_amb2),
+      co_amb3: toNumberOrNull(r.co_amb3),
+      co_amb4: toNumberOrNull(r.co_amb4),
+      co_amb5: toNumberOrNull(r.co_amb5),
+      co_amb6: toNumberOrNull(r.co_amb6),
+      co_amb7: toNumberOrNull(r.co_amb7),
+      co_amb8: toNumberOrNull(r.co_amb8),
+      co_amb9: toNumberOrNull(r.co_amb9),
+      co_amb10: toNumberOrNull(r.co_amb10),
+      co_amb11: toNumberOrNull(r.co_amb11),
+      co_amb12: toNumberOrNull(r.co_amb12),
+      co_amb13: toNumberOrNull(r.co_amb13),
+      co_amb14: toNumberOrNull(r.co_amb14),
+      co_amb15: toNumberOrNull(r.co_amb15),
+      co_amb16: toNumberOrNull(r.co_amb16),
     }));
   } catch (err) {
     console.error("Erro ao buscar dados do n8n:", err);

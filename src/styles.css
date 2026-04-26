@@ -94,6 +94,7 @@
   --chart-4: oklch(0.62 0.2 25);
   --chart-5: oklch(0.6 0.18 290);
   --chart-6: oklch(0.65 0.14 200);
+  --chart-axis: var(--muted-foreground);
 
   --sidebar: oklch(0.97 0.005 240);
   --sidebar-foreground: oklch(0.2 0.02 250);
@@ -152,6 +153,7 @@
   --chart-4: oklch(0.7 0.2 25);
   --chart-5: oklch(0.7 0.18 290);
   --chart-6: oklch(0.75 0.14 230);
+  --chart-axis: oklch(0.99 0.005 240);
 
   --sidebar: oklch(0.18 0.02 250);
   --sidebar-foreground: oklch(0.92 0.01 240);

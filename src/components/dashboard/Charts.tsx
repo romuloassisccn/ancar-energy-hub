@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import type { TrendRow } from "@/lib/mock-data";
 
-const axisStyle = { fontSize: 10, fill: "hsl(var(--muted-foreground))" };
+const axisStyle = { fontSize: 10, fill: "var(--chart-axis)" };
 
 const chillerSeries = [
   { id: "UR1", kw: "kw_ur1", tr: "tr_ur1", kwtr: "kwtr_ur1", color: "var(--chart-1)" },
@@ -24,6 +24,27 @@ const chillerSeries = [
   { id: "UR4", kw: "kw_ur4", tr: "tr_ur4", kwtr: "kwtr_ur4", color: "var(--chart-4)" },
   { id: "UR5", kw: "kw_ur5", tr: "tr_ur5", kwtr: "kwtr_ur5", color: "var(--chart-5)" },
 ] as const;
+
+const ambientColors = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+] as const;
+
+const tempAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+  id: `Temp ${index + 1}`,
+  key: `temp_amb${index + 1}` as keyof TrendRow,
+  color: ambientColors[index % ambientColors.length],
+}));
+
+const coAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+  id: `CO ${index + 1}`,
+  key: `co_amb${index + 1}` as keyof TrendRow,
+  color: ambientColors[index % ambientColors.length],
+}));
 
 function num(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -313,5 +334,93 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
         </ResponsiveContainer>
       )}
     </ChartFrame>
+  );
+}
+
+function AmbientLineChart({
+  data,
+  title,
+  subtitle,
+  unit,
+  series,
+}: {
+  data: TrendRow[];
+  title: string;
+  subtitle: string;
+  unit: string;
+  series: { id: string; key: keyof TrendRow; color: string }[];
+}) {
+  const chartData = sortData(data)
+    .map((r) => ({
+      timestampMs: parseTimestampMs(r.timestamp),
+      label: shortLabel(r.timestamp),
+      ...Object.fromEntries(series.map((item) => [item.key, num(r[item.key])])),
+    }))
+    .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
+
+  const hasData = chartData.some((row) =>
+    series.some((item) => num((row as Record<string, unknown>)[String(item.key)]) !== null),
+  );
+
+  return (
+    <ChartFrame title={title} subtitle={subtitle}>
+      {!hasData ? (
+        <EmptyState />
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+            <XAxis
+              type="number"
+              dataKey="timestampMs"
+              domain={["dataMin", "dataMax"]}
+              tick={axisStyle}
+              tickMargin={8}
+              tickFormatter={(value) => shortLabel(value)}
+            />
+            <YAxis tick={axisStyle} tickMargin={8} unit={unit} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {series.map((item, index) => (
+              <Line
+                key={String(item.key)}
+                name={item.id}
+                type="monotone"
+                dataKey={String(item.key)}
+                stroke={item.color}
+                dot={false}
+                strokeWidth={1.4}
+                strokeDasharray={index >= ambientColors.length ? "4 3" : undefined}
+                connectNulls={true}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </ChartFrame>
+  );
+}
+
+export function AmbientTemperatureChart({ data }: { data: TrendRow[] }) {
+  return (
+    <AmbientLineChart
+      data={data}
+      title="Temperatura Ambiente"
+      subtitle="temp_amb1–16"
+      unit="°C"
+      series={tempAmbSeries}
+    />
+  );
+}
+
+export function AmbientCOChart({ data }: { data: TrendRow[] }) {
+  return (
+    <AmbientLineChart
+      data={data}
+      title="CO Ambiente"
+      subtitle="co_amb1–16"
+      unit=" ppm"
+      series={coAmbSeries}
+    />
   );
 }
