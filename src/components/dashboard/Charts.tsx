@@ -358,7 +358,9 @@ function AmbientLineChart({
     }))
     .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
-  const hasData = chartData.some((row) => series.some((item) => num(row[item.key]) !== null));
+  const hasData = chartData.some((row) =>
+    series.some((item) => num((row as Record<string, unknown>)[String(item.key)]) !== null),
+  );
 
   return (
     <ChartFrame title={title} subtitle={subtitle}>
