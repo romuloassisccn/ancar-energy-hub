@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import type { TrendRow } from "@/lib/mock-data";
 
-const axisStyle = { fontSize: 10, fill: "hsl(var(--muted-foreground))" };
+const axisStyle = { fontSize: 10, fill: "var(--chart-axis)" };
 
 const chillerSeries = [
   { id: "UR1", kw: "kw_ur1", tr: "tr_ur1", kwtr: "kwtr_ur1", color: "var(--chart-1)" },
@@ -24,6 +24,27 @@ const chillerSeries = [
   { id: "UR4", kw: "kw_ur4", tr: "tr_ur4", kwtr: "kwtr_ur4", color: "var(--chart-4)" },
   { id: "UR5", kw: "kw_ur5", tr: "tr_ur5", kwtr: "kwtr_ur5", color: "var(--chart-5)" },
 ] as const;
+
+const ambientColors = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+] as const;
+
+const tempAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+  id: `Temp ${index + 1}`,
+  key: `temp_amb${index + 1}` as keyof TrendRow,
+  color: ambientColors[index % ambientColors.length],
+}));
+
+const coAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+  id: `CO ${index + 1}`,
+  key: `co_amb${index + 1}` as keyof TrendRow,
+  color: ambientColors[index % ambientColors.length],
+}));
 
 function num(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
