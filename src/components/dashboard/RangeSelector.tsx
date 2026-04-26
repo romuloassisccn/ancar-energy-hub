@@ -7,7 +7,7 @@ interface RangeSelectorProps {
 }
 
 const options: { key: RangeKey; label: string }[] = [
-  { key: "today", label: "Hoje" },
+  { key: "today", label: "Ontem" },
   { key: "week", label: "Semana" },
   { key: "month", label: "Mês" },
   { key: "quarter", label: "3 Meses" },
