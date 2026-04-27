@@ -343,12 +343,14 @@ function AmbientLineChart({
   subtitle,
   unit,
   series,
+  yDomain,
 }: {
   data: TrendRow[];
   title: string;
   subtitle: string;
   unit: string;
   series: { id: string; key: keyof TrendRow; color: string }[];
+  yDomain?: [number, number];
 }) {
   const chartData = sortData(data)
     .map((r) => ({
@@ -378,7 +380,7 @@ function AmbientLineChart({
               tickMargin={8}
               tickFormatter={(value) => shortLabel(value)}
             />
-            <YAxis tick={axisStyle} tickMargin={8} unit={unit} />
+            <YAxis tick={axisStyle} tickMargin={8} unit={unit} domain={yDomain} />
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {series.map((item, index) => (
@@ -409,6 +411,7 @@ export function AmbientTemperatureChart({ data }: { data: TrendRow[] }) {
       subtitle="CLIMATIZAÇÃO"
       unit="°C"
       series={tempAmbSeries}
+      yDomain={[21, 30]}
     />
   );
 }
