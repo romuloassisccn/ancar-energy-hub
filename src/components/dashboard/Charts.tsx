@@ -143,16 +143,20 @@ function EmptyState({ height = 240 }: { height?: number }) {
  */
 export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
+  const validKwTr = (v: unknown) => {
+    const n = num(v);
+    return n !== null && n > 0 && n <= 3 ? n : null;
+  };
   const chartData = sortData(data)
     .map((r) => ({
       timestampMs: parseTimestampMs(r.timestamp),
       label: shortLabel(r.timestamp),
-      eficiencia_kw_tr: r.eficiencia_kw_tr,
-      kwtr_ur1: r.kwtr_ur1,
-      kwtr_ur2: r.kwtr_ur2,
-      kwtr_ur3: r.kwtr_ur3,
-      kwtr_ur4: r.kwtr_ur4,
-      kwtr_ur5: r.kwtr_ur5,
+      eficiencia_kw_tr: validKwTr(r.eficiencia_kw_tr),
+      kwtr_ur1: validKwTr(r.kwtr_ur1),
+      kwtr_ur2: validKwTr(r.kwtr_ur2),
+      kwtr_ur3: validKwTr(r.kwtr_ur3),
+      kwtr_ur4: validKwTr(r.kwtr_ur4),
+      kwtr_ur5: validKwTr(r.kwtr_ur5),
     }))
     .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
@@ -248,7 +252,7 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ x: num(r.temp_ext), y: num(r[series.kwtr]) }))
-      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0),
+      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 3),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
@@ -297,7 +301,7 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ carga_tr: num(r[series.tr]), kw_tr: num(r[series.kwtr]) }))
-      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null),
+      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null && point.kw_tr > 0 && point.kw_tr <= 3),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
