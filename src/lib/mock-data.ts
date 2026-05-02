@@ -106,29 +106,6 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
-function mergeTrendRows(rows: TrendRow[]): TrendRow[] {
-  const merged = new Map<string, TrendRow>();
-
-  rows.forEach((row) => {
-    const key = `${row.shopping_id}-${row.timestamp}`;
-    const current = merged.get(key);
-
-    if (!current) {
-      merged.set(key, row);
-      return;
-    }
-
-    (Object.keys(row) as Array<keyof TrendRow>).forEach((field) => {
-      const value = row[field];
-      if (value !== null && value !== undefined && value !== "") {
-        (current as Record<keyof TrendRow, TrendRow[keyof TrendRow]>)[field] = value;
-      }
-    });
-  });
-
-  return [...merged.values()];
-}
-
 // -----------------------------
 // FETCH REAL (Conexão com n8n)
 // -----------------------------
