@@ -187,7 +187,7 @@ function DashboardPage() {
         <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <KpiCard
             label="Média da Rede"
-            value={format(network.avgEff)}
+            value={format(selectedKpis?.eff)}
             unit="kW/TR"
             icon={Activity}
           />
