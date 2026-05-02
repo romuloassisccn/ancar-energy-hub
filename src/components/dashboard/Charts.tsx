@@ -301,7 +301,7 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ carga_tr: num(r[series.tr]), kw_tr: num(r[series.kwtr]) }))
-      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null),
+      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null && point.kw_tr > 0 && point.kw_tr <= 3),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
