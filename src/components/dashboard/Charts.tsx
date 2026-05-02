@@ -143,16 +143,20 @@ function EmptyState({ height = 240 }: { height?: number }) {
  */
 export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
+  const validKwTr = (v: unknown) => {
+    const n = num(v);
+    return n !== null && n > 0 && n <= 3 ? n : null;
+  };
   const chartData = sortData(data)
     .map((r) => ({
       timestampMs: parseTimestampMs(r.timestamp),
       label: shortLabel(r.timestamp),
-      eficiencia_kw_tr: r.eficiencia_kw_tr,
-      kwtr_ur1: r.kwtr_ur1,
-      kwtr_ur2: r.kwtr_ur2,
-      kwtr_ur3: r.kwtr_ur3,
-      kwtr_ur4: r.kwtr_ur4,
-      kwtr_ur5: r.kwtr_ur5,
+      eficiencia_kw_tr: validKwTr(r.eficiencia_kw_tr),
+      kwtr_ur1: validKwTr(r.kwtr_ur1),
+      kwtr_ur2: validKwTr(r.kwtr_ur2),
+      kwtr_ur3: validKwTr(r.kwtr_ur3),
+      kwtr_ur4: validKwTr(r.kwtr_ur4),
+      kwtr_ur5: validKwTr(r.kwtr_ur5),
     }))
     .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
