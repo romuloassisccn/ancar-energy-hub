@@ -106,114 +106,40 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
-function mergeTrendRows(rows: TrendRow[]): TrendRow[] {
-  const merged = new Map<string, TrendRow>();
-
-  rows.forEach((row) => {
-    const key = `${row.shopping_id}-${row.timestamp}`;
-    const current = merged.get(key);
-
-    if (!current) {
-      merged.set(key, row);
-      return;
-    }
-
-    (Object.keys(row) as Array<keyof TrendRow>).forEach((field) => {
-      const value = row[field];
-      if (value !== null && value !== undefined && value !== "") {
-        (current as Record<keyof TrendRow, TrendRow[keyof TrendRow]>)[field] = value;
-      }
-    });
-  });
-
-  return [...merged.values()];
-}
-
 // -----------------------------
 // FETCH REAL (Conexão com n8n)
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    // O webhook deve retornar todo o histórico da tabela trends_shoppings,
-    // sem LIMIT e sem filtro fixo. Os períodos são aplicados na visualização.
-    const res = await fetch("http://localhost:5678/webhook/dados-ancal");
+    const res = await fetch("http://localhost:5678/webhook/dashboard-dados");
     const data = await res.json();
 
-    console.log("DADOS RECEBIDOS DO N8N:", data);
-
-    // Garante que os dados sejam tratados como array (mesmo que venha 1 item só)
     const rows = Array.isArray(data) ? data : [data];
+    console.log(`[dashboard] registros recebidos: ${rows.length}`);
+    if (rows.length > 0) console.log("[dashboard] primeiro registro:", rows[0]);
 
-    const normalizedRows = rows.map((r: any) => ({
-      timestamp: String(r.timestamp ?? r.data_hora ?? ""),
-      
-      shopping_id: String(r.shopping_id || "")
-        .trim()
-        .toUpperCase() as ShoppingId,
+    const normalized: TrendRow[] = rows.map((r: any) => {
+      const out: any = {
+        timestamp: String(r.timestamp ?? r.data_hora ?? ""),
+        shopping_id: String(r.shopping_id || "").trim().toUpperCase(),
+      };
+      const numericKeys = [
+        "temp_ext","vazao",
+        "tr_ur1","tr_ur2","tr_ur3","tr_ur4","tr_ur5",
+        "kw_ur1","kw_ur2","kw_ur3","kw_ur4","kw_ur5",
+        "kwtr_ur1","kwtr_ur2","kwtr_ur3","kwtr_ur4","kwtr_ur5",
+        "kw_perifericos","kw_total_planta","eficiencia_kw_tr",
+      ];
+      for (const k of numericKeys) out[k] = toNumberOrNull(r[k]);
+      for (let i = 1; i <= 16; i++) {
+        out[`temp_amb${i}`] = toNumberOrNull(r[`temp_amb${i}`] ?? r[`tem_amb${i}`]);
+        out[`co_amb${i}`] = toNumberOrNull(r[`co_amb${i}`]);
+      }
+      if (out.temp_ext === null) out.temp_ext = toNumberOrNull(r.temp);
+      return out as TrendRow;
+    });
 
-      temp_ext: toNumberOrNull(r.temp_ext ?? r.temp),
-      vazao: toNumberOrNull(r.vazao),
-
-      // Carga térmica por chiller
-      tr_ur1: toNumberOrNull(r.tr_ur1),
-      tr_ur2: toNumberOrNull(r.tr_ur2),
-      tr_ur3: toNumberOrNull(r.tr_ur3),
-      tr_ur4: toNumberOrNull(r.tr_ur4),
-      tr_ur5: toNumberOrNull(r.tr_ur5),
-
-      // Chillers
-      kw_ur1: toNumberOrNull(r.kw_ur1),
-      kw_ur2: toNumberOrNull(r.kw_ur2),
-      kw_ur3: toNumberOrNull(r.kw_ur3),
-      kw_ur4: toNumberOrNull(r.kw_ur4),
-      kw_ur5: toNumberOrNull(r.kw_ur5),
-
-      // Eficiência individual por chiller
-      kwtr_ur1: toNumberOrNull(r.kwtr_ur1),
-      kwtr_ur2: toNumberOrNull(r.kwtr_ur2),
-      kwtr_ur3: toNumberOrNull(r.kwtr_ur3),
-      kwtr_ur4: toNumberOrNull(r.kwtr_ur4),
-      kwtr_ur5: toNumberOrNull(r.kwtr_ur5),
-
-      // Planta Geral
-      kw_perifericos: toNumberOrNull(r.kw_perifericos),
-      kw_total_planta: toNumberOrNull(r.kw_total_planta),
-      eficiencia_kw_tr: toNumberOrNull(r.eficiencia_kw_tr),
-      temp_amb1: toNumberOrNull(r.temp_amb1 ?? r.tem_amb1),
-      temp_amb2: toNumberOrNull(r.temp_amb2 ?? r.tem_amb2),
-      temp_amb3: toNumberOrNull(r.temp_amb3 ?? r.tem_amb3),
-      temp_amb4: toNumberOrNull(r.temp_amb4 ?? r.tem_amb4),
-      temp_amb5: toNumberOrNull(r.temp_amb5 ?? r.tem_amb5),
-      temp_amb6: toNumberOrNull(r.temp_amb6 ?? r.tem_amb6),
-      temp_amb7: toNumberOrNull(r.temp_amb7 ?? r.tem_amb7),
-      temp_amb8: toNumberOrNull(r.temp_amb8 ?? r.tem_amb8),
-      temp_amb9: toNumberOrNull(r.temp_amb9 ?? r.tem_amb9),
-      temp_amb10: toNumberOrNull(r.temp_amb10 ?? r.tem_amb10),
-      temp_amb11: toNumberOrNull(r.temp_amb11 ?? r.tem_amb11),
-      temp_amb12: toNumberOrNull(r.temp_amb12 ?? r.tem_amb12),
-      temp_amb13: toNumberOrNull(r.temp_amb13 ?? r.tem_amb13),
-      temp_amb14: toNumberOrNull(r.temp_amb14 ?? r.tem_amb14),
-      temp_amb15: toNumberOrNull(r.temp_amb15 ?? r.tem_amb15),
-      temp_amb16: toNumberOrNull(r.temp_amb16 ?? r.tem_amb16),
-      co_amb1: toNumberOrNull(r.co_amb1),
-      co_amb2: toNumberOrNull(r.co_amb2),
-      co_amb3: toNumberOrNull(r.co_amb3),
-      co_amb4: toNumberOrNull(r.co_amb4),
-      co_amb5: toNumberOrNull(r.co_amb5),
-      co_amb6: toNumberOrNull(r.co_amb6),
-      co_amb7: toNumberOrNull(r.co_amb7),
-      co_amb8: toNumberOrNull(r.co_amb8),
-      co_amb9: toNumberOrNull(r.co_amb9),
-      co_amb10: toNumberOrNull(r.co_amb10),
-      co_amb11: toNumberOrNull(r.co_amb11),
-      co_amb12: toNumberOrNull(r.co_amb12),
-      co_amb13: toNumberOrNull(r.co_amb13),
-      co_amb14: toNumberOrNull(r.co_amb14),
-      co_amb15: toNumberOrNull(r.co_amb15),
-      co_amb16: toNumberOrNull(r.co_amb16),
-    }));
-
-    return mergeTrendRows(normalizedRows);
+    return normalized;
   } catch (err) {
     console.error("Erro ao buscar dados do n8n:", err);
     return [];
@@ -230,9 +156,9 @@ export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
   const todayStart = { ...now, hour: 0, minute: 0, second: 0 };
   const cutoff = getRangeCutoff(now, range);
 
-  return rows.filter((r) => {
+  const filtered = rows.filter((r) => {
     const rowDate = parsePostgresTimestamp(r.timestamp);
-    if (!rowDate) return false;
+    if (!rowDate) return true; // mantém registros sem timestamp parseável
 
     if (range === "today") {
       return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, todayStart) < 0;
@@ -240,6 +166,9 @@ export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
 
     return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, now) <= 0;
   });
+
+  // Resiliência: se o filtro zerar o dataset, devolve tudo para o dashboard sempre renderizar.
+  return filtered.length === 0 ? rows : filtered;
 }
 
 function getSaoPauloDateParts(date: Date) {
