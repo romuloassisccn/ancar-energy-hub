@@ -156,9 +156,9 @@ export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
   const todayStart = { ...now, hour: 0, minute: 0, second: 0 };
   const cutoff = getRangeCutoff(now, range);
 
-  return rows.filter((r) => {
+  const filtered = rows.filter((r) => {
     const rowDate = parsePostgresTimestamp(r.timestamp);
-    if (!rowDate) return false;
+    if (!rowDate) return true; // mantém registros sem timestamp parseável
 
     if (range === "today") {
       return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, todayStart) < 0;
@@ -166,6 +166,9 @@ export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
 
     return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, now) <= 0;
   });
+
+  // Resiliência: se o filtro zerar o dataset, devolve tudo para o dashboard sempre renderizar.
+  return filtered.length === 0 ? rows : filtered;
 }
 
 function getSaoPauloDateParts(date: Date) {
