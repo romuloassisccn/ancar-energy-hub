@@ -150,8 +150,6 @@ export async function buildDataset(): Promise<TrendRow[]> {
 // RANGE FILTER (Filtro Temporal)
 // -----------------------------
 export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
-  if (range === "year") return rows;
-
   const now = getSaoPauloDateParts(new Date());
   const todayStart = { ...now, hour: 0, minute: 0, second: 0 };
   const cutoff = getRangeCutoff(now, range);
@@ -231,7 +229,8 @@ function getRangeCutoff(
     };
   }
 
-  const monthsBack = range === "month" ? 1 : range === "quarter" ? 3 : 0;
+  const monthsBack =
+    range === "month" ? 1 : range === "quarter" ? 2 : range === "year" ? 3 : 0;
   const daysBack = range === "week" ? 7 : 0;
   const date = new Date(Date.UTC(now.year, now.month - 1 - monthsBack, now.day - daysBack, 0, 0, 0));
 
