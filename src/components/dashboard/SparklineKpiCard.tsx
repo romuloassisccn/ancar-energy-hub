@@ -60,11 +60,7 @@ export function SparklineKpiCard({
                   fontSize: 11,
                   padding: "4px 8px",
                 }}
-                labelFormatter={(t) =>
-                  typeof t === "number" && t > 0
-                    ? new Date(t).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-                    : ""
-                }
+                labelFormatter={() => ""}
                 formatter={(v: any) => [
                   Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "—",
                   unit ?? "valor",
