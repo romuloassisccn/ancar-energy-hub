@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Activity, Gauge, ThermometerSun, Waves, Zap } from "lucide-react";
+import { Activity, Droplet, Gauge, ThermometerSun, Waves } from "lucide-react";
 
 import { ShoppingSidebar } from "@/components/dashboard/ShoppingSidebar";
 import { RangeSelector } from "@/components/dashboard/RangeSelector";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { SparklineKpiCard } from "@/components/dashboard/SparklineKpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
 import {
   AmbientCOChart,
