@@ -214,7 +214,7 @@ function parsePostgresTimestamp(timestamp: string) {
 
 function getRangeCutoff(
   now: ReturnType<typeof getSaoPauloDateParts>,
-  range: Exclude<RangeKey, "year">,
+  range: RangeKey,
 ) {
   if (range === "today") {
     const yesterday = new Date(Date.UTC(now.year, now.month - 1, now.day - 1, 0, 0, 0));
