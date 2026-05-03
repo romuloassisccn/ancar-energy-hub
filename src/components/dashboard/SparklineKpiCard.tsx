@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
+import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 
 interface SparklineKpiCardProps {
   label: string;
@@ -49,14 +49,35 @@ export function SparklineKpiCard({
       <div className="mt-2 h-12">
         {data.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
               <YAxis hide domain={["auto", "auto"]} />
+              <Tooltip
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+                contentStyle={{
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  fontSize: 11,
+                  padding: "4px 8px",
+                }}
+                labelFormatter={(t) =>
+                  typeof t === "number" && t > 0
+                    ? new Date(t).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                    : ""
+                }
+                formatter={(v: any) => [
+                  Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "—",
+                  unit ?? "valor",
+                ]}
+                labelStyle={{ color: "var(--muted-foreground)" }}
+              />
               <Line
                 type="monotone"
                 dataKey="v"
                 stroke={color}
                 strokeWidth={1.6}
                 dot={false}
+                activeDot={{ r: 3, stroke: color, fill: color }}
                 isAnimationActive={false}
               />
             </LineChart>

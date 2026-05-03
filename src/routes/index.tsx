@@ -139,7 +139,7 @@ function DashboardPage() {
     const series = (key: keyof typeof sorted[number]) =>
       sorted
         .map((r) => ({ t: new Date(r.timestamp).getTime() || 0, v: Number(r[key]) }))
-        .filter((p) => Number.isFinite(p.v));
+        .filter((p) => Number.isFinite(p.v) && p.v > 0);
 
     const maxVazao = selectedRows.reduce((m, r) => Math.max(m, r.vazao || 0), 0);
     const maxTempExt = selectedRows.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
