@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Activity, Gauge, ThermometerSun, Waves, Zap } from "lucide-react";
+import { Activity, Droplet, Gauge, ThermometerSun, Waves } from "lucide-react";
 
 import { ShoppingSidebar } from "@/components/dashboard/ShoppingSidebar";
 import { RangeSelector } from "@/components/dashboard/RangeSelector";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { SparklineKpiCard } from "@/components/dashboard/SparklineKpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
 import {
   AmbientCOChart,
@@ -129,35 +130,46 @@ function DashboardPage() {
   const selectedKpis = useMemo(() => {
     if (selectedRows.length === 0) return null;
 
-    const maxVazao = selectedRows.reduce(
-      (m, r) => Math.max(m, r.vazao || 0),
-      0
-    );
+    const sorted = [...selectedRows].sort((a, b) => {
+      const ta = new Date(a.timestamp).getTime() || 0;
+      const tb = new Date(b.timestamp).getTime() || 0;
+      return ta - tb;
+    });
 
-    const maxKw = selectedRows.reduce(
-      (m, r) => Math.max(m, r.kw_total_planta || 0),
-      0
-    );
+    const series = (key: keyof typeof sorted[number]) =>
+      sorted
+        .map((r) => ({ t: new Date(r.timestamp).getTime() || 0, v: Number(r[key]) }))
+        .filter((p) => Number.isFinite(p.v));
 
-    const maxTempExt = selectedRows.reduce(
-      (m, r) => Math.max(m, r.temp_ext || 0),
-      0
-    );
+    const maxVazao = selectedRows.reduce((m, r) => Math.max(m, r.vazao || 0), 0);
+    const maxTempExt = selectedRows.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
+
+    const tempAgValues = selectedRows
+      .map((r) => Number((r as any).temp_ag_cag))
+      .filter((v) => Number.isFinite(v));
+    const avgTempAg = tempAgValues.length
+      ? tempAgValues.reduce((a, b) => a + b, 0) / tempAgValues.length
+      : 0;
 
     const valid = selectedRows.filter(
-      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0
+      (r) =>
+        typeof r.eficiencia_kw_tr === "number" &&
+        r.eficiencia_kw_tr > 0 &&
+        r.eficiencia_kw_tr <= 4,
     );
 
     const avgEff = valid.length
-      ? valid.reduce((a, b) => a + (b.eficiencia_kw_tr ?? 0), 0) /
-        valid.length
+      ? valid.reduce((a, b) => a + (b.eficiencia_kw_tr ?? 0), 0) / valid.length
       : 0;
 
     return {
       eff: avgEff,
-      maxKw,
+      avgTempAg,
       maxVazao,
       maxTempExt,
+      vazaoSeries: series("vazao"),
+      tempAgSeries: series("temp_ag_cag" as any),
+      tempExtSeries: series("temp_ext"),
       samples: selectedRows.length,
     };
   }, [selectedRows]);
@@ -192,27 +204,33 @@ function DashboardPage() {
             icon={Activity}
           />
 
-          <KpiCard
-            label="Vazão Máxima"
+          <SparklineKpiCard
+            label="Vazão"
             value={format(selectedKpis?.maxVazao, 1)}
-            unit="m³/h"
+            unit="m³/h (máx)"
             icon={Waves}
+            data={selectedKpis?.vazaoSeries ?? []}
+            color="var(--chart-2)"
           />
 
-          <KpiCard
-            label="Potência Máxima"
-            value={format(selectedKpis?.maxKw, 0)}
-            unit="kW"
-            icon={Zap}
-            tone="warning"
-          />
-
-          <KpiCard
-            label="Temp. Externa Máxima"
-            value={format(selectedKpis?.maxTempExt, 1)}
+          <SparklineKpiCard
+            label="Temp. Alimentação Água Gelada"
+            value={format(selectedKpis?.avgTempAg, 1)}
             unit="°C"
+            icon={Droplet}
+            tone="warning"
+            data={selectedKpis?.tempAgSeries ?? []}
+            color="var(--chart-3)"
+          />
+
+          <SparklineKpiCard
+            label="Temperatura Externa"
+            value={format(selectedKpis?.maxTempExt, 1)}
+            unit="°C (máx)"
             icon={ThermometerSun}
             tone="critical"
+            data={selectedKpis?.tempExtSeries ?? []}
+            color="var(--chart-4)"
           />
         </section>
 

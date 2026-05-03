@@ -10,8 +10,8 @@ const options: { key: RangeKey; label: string }[] = [
   { key: "today", label: "Ontem" },
   { key: "week", label: "Semana" },
   { key: "month", label: "Mês" },
-  { key: "quarter", label: "3 Meses" },
-  { key: "year", label: "Tudo" },
+  { key: "quarter", label: "2 Meses" },
+  { key: "year", label: "3 Meses" },
 ];
 
 export function RangeSelector({ value, onChange }: RangeSelectorProps) {
