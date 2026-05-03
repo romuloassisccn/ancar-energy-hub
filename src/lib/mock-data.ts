@@ -36,6 +36,7 @@ export interface TrendRow {
   timestamp: string;
   shopping_id: ShoppingId;
   temp_ext: number | null;
+  temp_ag_cag: number | null;
   vazao: number | null;
   tr_ur1: number | null;
   tr_ur2: number | null;
@@ -124,7 +125,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
         shopping_id: String(r.shopping_id || "").trim().toUpperCase(),
       };
       const numericKeys = [
-        "temp_ext","vazao",
+        "temp_ext","temp_ag_cag","vazao",
         "tr_ur1","tr_ur2","tr_ur3","tr_ur4","tr_ur5",
         "kw_ur1","kw_ur2","kw_ur3","kw_ur4","kw_ur5",
         "kwtr_ur1","kwtr_ur2","kwtr_ur3","kwtr_ur4","kwtr_ur5",
