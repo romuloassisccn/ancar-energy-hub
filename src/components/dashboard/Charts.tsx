@@ -356,13 +356,21 @@ function AmbientLineChart({
   series: { id: string; key: keyof TrendRow; color: string }[];
   yDomain?: [number, number];
 }) {
+  const positive = (v: unknown) => {
+    const n = num(v);
+    return n !== null && n > 0 ? n : null;
+  };
   const chartData = sortData(data)
     .map((r) => ({
       timestampMs: parseTimestampMs(r.timestamp),
       label: shortLabel(r.timestamp),
-      ...Object.fromEntries(series.map((item) => [item.key, num(r[item.key])])),
+      ...Object.fromEntries(series.map((item) => [item.key, positive(r[item.key])])),
     }))
-    .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
+    .filter((r): r is typeof r & { timestampMs: number } => {
+      if (r.timestampMs === null) return false;
+      const hour = new Date(r.timestampMs).getHours();
+      return hour >= 10 && hour <= 22;
+    });
 
   const hasData = chartData.some((row) =>
     series.some((item) => num((row as Record<string, unknown>)[String(item.key)]) !== null),
