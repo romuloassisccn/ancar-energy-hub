@@ -268,6 +268,7 @@ function compareDateParts(a: NonNullable<ReturnType<typeof parsePostgresTimestam
 // -----------------------------
 export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
   return SHOPPING_IDS.map((id) => {
+    const target = SHOPPING_TARGETS[id] ?? null;
     const arr = rows.filter((r) => r.shopping_id === id);
 
     if (arr.length === 0) {
@@ -277,10 +278,14 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
         avg_efficiency: 0,
         avg_kw_total: 0,
         samples: 0,
+        target,
+        deviation: null,
       };
     }
 
-    const effRows = arr.filter((r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0);
+    const effRows = arr.filter(
+      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0 && r.eficiencia_kw_tr <= 4,
+    );
     const kwRows = arr.filter((r) => typeof r.kw_total_planta === "number" && r.kw_total_planta > 0);
 
     const avgEff = effRows.length
@@ -291,12 +296,16 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
       ? kwRows.reduce((a, b) => a + (b.kw_total_planta ?? 0), 0) / kwRows.length
       : 0;
 
+    const deviation = target && avgEff > 0 ? ((avgEff - target) / target) * 100 : null;
+
     return {
       shopping_id: id,
       name: SHOPPING_NAMES[id],
       avg_efficiency: avgEff || 0,
       avg_kw_total: avgKw || 0,
       samples: arr.length,
+      target,
+      deviation,
     };
   });
 }
