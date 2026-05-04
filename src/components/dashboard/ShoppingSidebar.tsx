@@ -6,7 +6,7 @@ import {
   type ShoppingAggregate,
   type ShoppingId,
 } from "@/lib/mock-data";
-import { Activity } from "lucide-react";
+
 
 interface ShoppingSidebarProps {
   selected: ShoppingId;
