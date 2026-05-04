@@ -96,7 +96,15 @@ export interface ShoppingAggregate {
   avg_efficiency: number;
   avg_kw_total: number;
   samples: number;
+  target: number | null;
+  deviation: number | null;
 }
+
+export const SHOPPING_TARGETS: Partial<Record<ShoppingId, number>> = {
+  BPS: 1.18, BLD: 0.76, RDB: 0.88, MAD: 0.93, SNI: 0.86, CVS: 0.91,
+  ITA: 1.20, GOL: 1.20, NAT: 0.82, PVS: 0.85, PAN: 0.92, BAN: 0.86,
+  NSF: 1.20, NSM: 1.19, NSJ: 1.19, VSS: 0.93,
+};
 
 export type RangeKey = "today" | "week" | "month" | "quarter" | "year";
 
@@ -260,6 +268,7 @@ function compareDateParts(a: NonNullable<ReturnType<typeof parsePostgresTimestam
 // -----------------------------
 export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
   return SHOPPING_IDS.map((id) => {
+    const target = SHOPPING_TARGETS[id] ?? null;
     const arr = rows.filter((r) => r.shopping_id === id);
 
     if (arr.length === 0) {
@@ -269,10 +278,14 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
         avg_efficiency: 0,
         avg_kw_total: 0,
         samples: 0,
+        target,
+        deviation: null,
       };
     }
 
-    const effRows = arr.filter((r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0);
+    const effRows = arr.filter(
+      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0 && r.eficiencia_kw_tr <= 4,
+    );
     const kwRows = arr.filter((r) => typeof r.kw_total_planta === "number" && r.kw_total_planta > 0);
 
     const avgEff = effRows.length
@@ -283,12 +296,16 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
       ? kwRows.reduce((a, b) => a + (b.kw_total_planta ?? 0), 0) / kwRows.length
       : 0;
 
+    const deviation = target && avgEff > 0 ? ((avgEff - target) / target) * 100 : null;
+
     return {
       shopping_id: id,
       name: SHOPPING_NAMES[id],
       avg_efficiency: avgEff || 0,
       avg_kw_total: avgKw || 0,
       samples: arr.length,
+      target,
+      deviation,
     };
   });
 }

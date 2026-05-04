@@ -145,7 +145,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
   const validKwTr = (v: unknown) => {
     const n = num(v);
-    return n !== null && n > 0 && n <= 3 ? n : null;
+    return n !== null && n > 0 && n <= 4 ? n : null;
   };
   const chartData = sortData(data)
     .map((r) => ({
@@ -252,7 +252,7 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ x: num(r.temp_ext), y: num(r[series.kwtr]) }))
-      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 3),
+      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 4),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
@@ -301,7 +301,7 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ carga_tr: num(r[series.tr]), kw_tr: num(r[series.kwtr]) }))
-      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.kw_tr !== null && point.kw_tr > 0 && point.kw_tr <= 3),
+      .filter((point): point is { carga_tr: number; kw_tr: number } => point.carga_tr !== null && point.carga_tr > 0 && point.kw_tr !== null && point.kw_tr > 0 && point.kw_tr <= 4),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
@@ -356,13 +356,21 @@ function AmbientLineChart({
   series: { id: string; key: keyof TrendRow; color: string }[];
   yDomain?: [number, number];
 }) {
+  const positive = (v: unknown) => {
+    const n = num(v);
+    return n !== null && n > 0 ? n : null;
+  };
   const chartData = sortData(data)
     .map((r) => ({
       timestampMs: parseTimestampMs(r.timestamp),
       label: shortLabel(r.timestamp),
-      ...Object.fromEntries(series.map((item) => [item.key, num(r[item.key])])),
+      ...Object.fromEntries(series.map((item) => [item.key, positive(r[item.key])])),
     }))
-    .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
+    .filter((r): r is typeof r & { timestampMs: number } => {
+      if (r.timestampMs === null) return false;
+      const hour = new Date(r.timestampMs).getHours();
+      return hour >= 10 && hour <= 22;
+    });
 
   const hasData = chartData.some((row) =>
     series.some((item) => num((row as Record<string, unknown>)[String(item.key)]) !== null),

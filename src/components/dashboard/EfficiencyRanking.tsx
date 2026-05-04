@@ -15,18 +15,15 @@ const tierStyles: Record<string, { dot: string; label: string; text: string }> =
 };
 
 export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankingProps) {
-  // Lower kW/TR is better. Filter shoppings with no operating data to bottom.
+  // Rank by deviation vs target. Without target → bottom. Without measured eff → bottom.
   const ranked = [...data].sort((a, b) => {
-    if (a.avg_efficiency === 0 && b.avg_efficiency === 0) return 0;
-    if (a.avg_efficiency === 0) return 1;
-    if (b.avg_efficiency === 0) return -1;
-    return a.avg_efficiency - b.avg_efficiency;
+    const aHas = a.deviation !== null;
+    const bHas = b.deviation !== null;
+    if (aHas && bHas) return (a.deviation as number) - (b.deviation as number);
+    if (aHas) return -1;
+    if (bHas) return 1;
+    return 0;
   });
-
-  const best = ranked.find((r) => r.avg_efficiency > 0)?.avg_efficiency ?? 1;
-  const worst = ranked
-    .filter((r) => r.avg_efficiency > 0)
-    .reduce((a, r) => Math.max(a, r.avg_efficiency), 0) || 1;
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
@@ -34,7 +31,7 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
         <div>
           <h3 className="text-sm font-semibold">Ranking de Eficiência</h3>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Menor kW/TR = melhor desempenho
+            Desvio % vs meta · menor é melhor
           </p>
         </div>
       </div>
@@ -42,10 +39,12 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-card">
             <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-2 text-left font-medium">#</th>
+              <th className="px-3 py-2 text-left font-medium">#</th>
               <th className="px-2 py-2 text-left font-medium">Shopping</th>
               <th className="px-2 py-2 text-right font-medium">kW/TR</th>
-              <th className="px-4 py-2 text-right font-medium">Status</th>
+              <th className="px-2 py-2 text-right font-medium">Meta</th>
+              <th className="px-2 py-2 text-right font-medium">Desvio</th>
+              <th className="px-3 py-2 text-right font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -53,8 +52,15 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
               const tier = performanceTier(row.avg_efficiency);
               const style = tierStyles[tier];
               const hasData = row.avg_efficiency > 0;
-              const pct = hasData ? ((row.avg_efficiency - best) / Math.max(worst - best, 0.001)) * 100 : 0;
+              const hasTarget = row.target !== null;
               const isActive = selected === row.shopping_id;
+              const dev = row.deviation;
+              const devColor =
+                dev === null
+                  ? "text-muted-foreground"
+                  : dev < 0
+                    ? "text-success"
+                    : "text-destructive";
               return (
                 <tr
                   key={row.shopping_id}
@@ -64,7 +70,7 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
                     isActive && "bg-accent/40",
                   )}
                 >
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground tabular-nums">
+                  <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground tabular-nums">
                     {String(idx + 1).padStart(2, "0")}
                   </td>
                   <td className="px-2 py-2.5">
@@ -78,21 +84,28 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
                       </div>
                     </div>
                   </td>
-                  <td className="px-2 py-2.5 text-right">
-                    <div className="font-mono text-sm tabular-nums">
-                      {hasData ? row.avg_efficiency.toFixed(3) : "—"}
-                    </div>
-                    {hasData && (
-                      <div className="mt-1 h-1 w-16 ml-auto overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn("h-full rounded-full", style.dot)}
-                          style={{ width: `${Math.max(8, 100 - pct)}%` }}
-                        />
-                      </div>
-                    )}
+                  <td className={cn("px-2 py-2.5 text-right font-mono text-xs tabular-nums", devColor)}>
+                    {hasData ? row.avg_efficiency.toFixed(3) : "—"}
                   </td>
-                  <td className={cn("px-4 py-2.5 text-right text-[11px] font-medium", style.text)}>
-                    {hasData ? style.label : "Sem dados"}
+                  <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                    {hasTarget ? row.target!.toFixed(2) : "—"}
+                  </td>
+                  <td className={cn("px-2 py-2.5 text-right font-mono text-xs tabular-nums", devColor)}>
+                    {dev === null ? "—" : `${dev > 0 ? "+" : ""}${dev.toFixed(1)}%`}
+                  </td>
+                  <td className={cn("px-3 py-2.5 text-right text-[11px] font-medium", style.text)}>
+                    {!hasData
+                      ? "Sem dados"
+                      : !hasTarget
+                        ? "Sem meta"
+                        : (
+                          <span>
+                            {style.label}
+                            <span className={cn("ml-1 font-mono", devColor)}>
+                              ({dev! > 0 ? "+" : ""}{dev!.toFixed(1)}%)
+                            </span>
+                          </span>
+                        )}
                   </td>
                 </tr>
               );
