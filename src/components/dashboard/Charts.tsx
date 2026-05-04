@@ -145,7 +145,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
   // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
   const validKwTr = (v: unknown) => {
     const n = num(v);
-    return n !== null && n > 0 && n <= 3 ? n : null;
+    return n !== null && n > 0 && n <= 4 ? n : null;
   };
   const chartData = sortData(data)
     .map((r) => ({
