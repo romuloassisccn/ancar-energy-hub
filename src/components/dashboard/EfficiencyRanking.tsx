@@ -49,10 +49,10 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
           </thead>
           <tbody>
             {ranked.map((row, idx) => {
-              const tier = performanceTier(row.avg_efficiency);
-              const style = tierStyles[tier];
               const hasData = row.avg_efficiency > 0;
               const hasTarget = row.target !== null;
+              const tier = tierByDeviation(row.deviation);
+              const style = tier === "none" ? null : tierStyles[tier];
               const isActive = selected === row.shopping_id;
               const dev = row.deviation;
               const devColor =
@@ -75,7 +75,7 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
                   </td>
                   <td className="px-2 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+                      <span className={cn("h-1.5 w-1.5 rounded-full", style?.dot ?? "bg-muted")} />
                       <div>
                         <p className="font-mono text-xs font-medium">{row.shopping_id}</p>
                         <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
@@ -93,19 +93,8 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
                   <td className={cn("px-2 py-2.5 text-right font-mono text-xs tabular-nums", devColor)}>
                     {dev === null ? "—" : `${dev > 0 ? "+" : ""}${dev.toFixed(1)}%`}
                   </td>
-                  <td className={cn("px-3 py-2.5 text-right text-[11px] font-medium", style.text)}>
-                    {!hasData
-                      ? "Sem dados"
-                      : !hasTarget
-                        ? "Sem meta"
-                        : (
-                          <span>
-                            {style.label}
-                            <span className={cn("ml-1 font-mono", devColor)}>
-                              ({dev! > 0 ? "+" : ""}{dev!.toFixed(1)}%)
-                            </span>
-                          </span>
-                        )}
+                  <td className={cn("px-3 py-2.5 text-right text-[11px] font-medium", style?.text ?? "text-muted-foreground")}>
+                    {!hasData ? "Sem dados" : !hasTarget ? "Sem meta" : style?.label}
                   </td>
                 </tr>
               );
