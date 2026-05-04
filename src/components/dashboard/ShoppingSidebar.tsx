@@ -6,7 +6,7 @@ import {
   type ShoppingAggregate,
   type ShoppingId,
 } from "@/lib/mock-data";
-import { Activity } from "lucide-react";
+
 
 interface ShoppingSidebarProps {
   selected: ShoppingId;
@@ -26,20 +26,6 @@ export function ShoppingSidebar({ selected, onSelect, aggregates }: ShoppingSide
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-      <div className="px-5 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 ring-1 ring-primary/30">
-            <Activity className="h-4.5 w-4.5 text-primary" />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Rede Ancar
-            </p>
-            <h2 className="text-sm font-semibold leading-tight">CAG Monitor</h2>
-          </div>
-        </div>
-      </div>
-
       <div className="px-3 pt-4 pb-2">
         <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Shoppings · 18
