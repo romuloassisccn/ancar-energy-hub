@@ -96,7 +96,15 @@ export interface ShoppingAggregate {
   avg_efficiency: number;
   avg_kw_total: number;
   samples: number;
+  target: number | null;
+  deviation: number | null;
 }
+
+export const SHOPPING_TARGETS: Partial<Record<ShoppingId, number>> = {
+  BPS: 1.18, BLD: 0.76, RDB: 0.88, MAD: 0.93, SNI: 0.86, CVS: 0.91,
+  ITA: 1.20, GOL: 1.20, NAT: 0.82, PVS: 0.85, PAN: 0.92, BAN: 0.86,
+  NSF: 1.20, NSM: 1.19, NSJ: 1.19, VSS: 0.93,
+};
 
 export type RangeKey = "today" | "week" | "month" | "quarter" | "year";
 
