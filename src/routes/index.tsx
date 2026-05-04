@@ -187,11 +187,13 @@ function DashboardPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      <ShoppingSidebar
-        selected={selected}
-        onSelect={setSelected}
-        aggregates={aggregates}
-      />
+      <aside className="hidden lg:flex w-[360px] shrink-0 flex-col border-r border-border bg-sidebar p-3">
+        <EfficiencyRanking
+          data={aggregates}
+          selected={selected}
+          onSelect={setSelected}
+        />
+      </aside>
 
       <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
 
@@ -302,12 +304,12 @@ function DashboardPage() {
           <AmbientCOChart data={selectedRows} />
         </section>
 
-        {/* RANKING + LOG */}
-        <section className="grid gap-6 xl:grid-cols-[400px_1fr]">
-          <EfficiencyRanking
-            data={aggregates}
+        {/* SHOPPINGS + LOG */}
+        <section className="grid gap-6 xl:grid-cols-[300px_1fr]">
+          <ShoppingSidebar
             selected={selected}
             onSelect={setSelected}
+            aggregates={aggregates}
           />
 
           <LogsTable rows={selectedRows} />
