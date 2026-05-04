@@ -187,7 +187,7 @@ function DashboardPage() {
 
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      <aside className="hidden lg:flex w-[360px] shrink-0 flex-col border-r border-border bg-sidebar p-3">
+      <aside className="hidden lg:flex w-[460px] shrink-0 flex-col border-r border-border bg-sidebar p-3">
         <EfficiencyRanking
           data={aggregates}
           selected={selected}
