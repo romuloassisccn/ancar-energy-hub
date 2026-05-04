@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { performanceTier, type ShoppingAggregate, type ShoppingId } from "@/lib/mock-data";
+import { tierByDeviation, type ShoppingAggregate, type ShoppingId } from "@/lib/mock-data";
 
 interface EfficiencyRankingProps {
   data: ShoppingAggregate[];
