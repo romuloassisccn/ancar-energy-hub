@@ -252,7 +252,7 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
     color: series.color,
     points: data
       .map((r) => ({ x: num(r.temp_ext), y: num(r[series.kwtr]) }))
-      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 3),
+      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 4),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
