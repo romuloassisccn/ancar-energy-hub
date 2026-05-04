@@ -320,3 +320,15 @@ export function performanceTier(eff: number): "excellent" | "good" | "warning" |
   if (eff < 1.1) return "warning";
   return "critical";
 }
+
+// Tier baseado em desvio % vs meta
+// dev <= -10 → ótimo; -10 < dev <= 0 → bom; 0 < dev <= 5 → atenção; dev > 5 → crítico
+export function tierByDeviation(
+  deviation: number | null,
+): "excellent" | "good" | "warning" | "critical" | "none" {
+  if (deviation === null || !Number.isFinite(deviation)) return "none";
+  if (deviation <= -10) return "excellent";
+  if (deviation <= 0) return "good";
+  if (deviation <= 5) return "warning";
+  return "critical";
+}
