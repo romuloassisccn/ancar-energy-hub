@@ -35,7 +35,7 @@ export function EfficiencyRanking({ data, selected, onSelect }: EfficiencyRankin
           </p>
         </div>
       </div>
-      <div className="max-h-[520px] overflow-y-auto">
+      <div className="max-h-[calc(100vh-120px)] overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-card">
             <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
