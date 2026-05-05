@@ -8,12 +8,6 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SparklineKpiCard } from "@/components/dashboard/SparklineKpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
 import {
-  GlobalFilter,
-  CHILLER_IDS,
-  SENSOR_INDEXES,
-  type ChillerId,
-} from "@/components/dashboard/GlobalFilter";
-import {
   AmbientCOChart,
   AmbientTemperatureChart,
   EfficiencyLineChart,
