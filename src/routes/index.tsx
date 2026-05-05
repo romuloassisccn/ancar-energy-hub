@@ -260,6 +260,14 @@ function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <GlobalFilter
+              chillers={selChillers}
+              onChillersChange={setSelChillers}
+              tempSensors={selTempSensors}
+              onTempSensorsChange={setSelTempSensors}
+              coSensors={selCoSensors}
+              onCoSensorsChange={setSelCoSensors}
+            />
             <RangeSelector value={range} onChange={setRange} />
             <ThemeToggle />
           </div>
@@ -304,22 +312,16 @@ function DashboardPage() {
 
         {/* GRÁFICOS */}
         <section className="grid gap-4 md:grid-cols-2">
-          <EfficiencyLineChart data={selectedRows} />
-          <ConsumptionBarChart data={selectedRows} />
-          <TempExtVsEfficiencyScatter data={selectedRows} />
-          <AmbientTemperatureChart data={selectedRows} />
-          <EfficiencyVsLoadScatter data={selectedRows} />
-          <AmbientCOChart data={selectedRows} />
+          <EfficiencyLineChart data={selectedRows} selectedChillers={selChillers} />
+          <ConsumptionBarChart data={selectedRows} selectedChillers={selChillers} />
+          <TempExtVsEfficiencyScatter data={selectedRows} selectedChillers={selChillers} />
+          <AmbientTemperatureChart data={selectedRows} selectedSensors={selTempSensors} />
+          <EfficiencyVsLoadScatter data={selectedRows} selectedChillers={selChillers} />
+          <AmbientCOChart data={selectedRows} selectedSensors={selCoSensors} />
         </section>
 
-        {/* SHOPPINGS + LOG */}
-        <section className="grid gap-6 xl:grid-cols-[300px_1fr]">
-          <ShoppingSidebar
-            selected={selected}
-            onSelect={setSelected}
-            aggregates={aggregates}
-          />
-
+        {/* LOGS — full width */}
+        <section>
           <LogsTable rows={selectedRows} />
         </section>
       </main>
