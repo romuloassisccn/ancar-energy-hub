@@ -8,12 +8,6 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SparklineKpiCard } from "@/components/dashboard/SparklineKpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
 import {
-  GlobalFilter,
-  CHILLER_IDS,
-  SENSOR_INDEXES,
-  type ChillerId,
-} from "@/components/dashboard/GlobalFilter";
-import {
   AmbientCOChart,
   AmbientTemperatureChart,
   EfficiencyLineChart,
@@ -56,9 +50,9 @@ function DashboardPage() {
   const [range, setRange] = useState<RangeKey>("week");
   const [selected, setSelected] = useState<ShoppingId>("BLD");
   const [isLoading, setIsLoading] = useState(true);
-  const [selChillers, setSelChillers] = useState<ChillerId[]>([...CHILLER_IDS]);
-  const [selTempSensors, setSelTempSensors] = useState<number[]>([...SENSOR_INDEXES]);
-  const [selCoSensors, setSelCoSensors] = useState<number[]>([...SENSOR_INDEXES]);
+  const [selChillers] = useState<string[]>([]);
+  const [selTempSensors] = useState<number[]>([]);
+  const [selCoSensors] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,14 +254,6 @@ function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <GlobalFilter
-              chillers={selChillers}
-              onChillersChange={setSelChillers}
-              tempSensors={selTempSensors}
-              onTempSensorsChange={setSelTempSensors}
-              coSensors={selCoSensors}
-              onCoSensorsChange={setSelCoSensors}
-            />
             <RangeSelector value={range} onChange={setRange} />
             <ThemeToggle />
           </div>
