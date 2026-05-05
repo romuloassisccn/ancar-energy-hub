@@ -2,12 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { Activity, Droplet, Gauge, ThermometerSun, Waves } from "lucide-react";
 
-import { ShoppingSidebar } from "@/components/dashboard/ShoppingSidebar";
 import { RangeSelector } from "@/components/dashboard/RangeSelector";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { SparklineKpiCard } from "@/components/dashboard/SparklineKpiCard";
 import { EfficiencyRanking } from "@/components/dashboard/EfficiencyRanking";
+import {
+  GlobalFilter,
+  CHILLER_IDS,
+  SENSOR_INDEXES,
+  type ChillerId,
+} from "@/components/dashboard/GlobalFilter";
 import {
   AmbientCOChart,
   AmbientTemperatureChart,
