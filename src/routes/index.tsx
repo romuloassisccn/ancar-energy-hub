@@ -56,6 +56,9 @@ function DashboardPage() {
   const [range, setRange] = useState<RangeKey>("week");
   const [selected, setSelected] = useState<ShoppingId>("BLD");
   const [isLoading, setIsLoading] = useState(true);
+  const [selChillers, setSelChillers] = useState<ChillerId[]>([...CHILLER_IDS]);
+  const [selTempSensors, setSelTempSensors] = useState<number[]>([...SENSOR_INDEXES]);
+  const [selCoSensors, setSelCoSensors] = useState<number[]>([...SENSOR_INDEXES]);
 
   useEffect(() => {
     let cancelled = false;
