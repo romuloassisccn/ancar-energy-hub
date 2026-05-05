@@ -48,7 +48,7 @@ export function LogsTable({ rows }: LogsTableProps) {
           trends_shoppings
         </span>
       </div>
-      <div className="overflow-x-auto max-h-[300px]">
+      <div className="overflow-x-auto max-h-[220px]">
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-card text-[10px] uppercase tracking-wider text-muted-foreground">
             <tr className="border-b border-border">
