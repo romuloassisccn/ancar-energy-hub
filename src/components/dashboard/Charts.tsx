@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -34,14 +35,16 @@ const ambientColors = [
   "var(--chart-6)",
 ] as const;
 
-const tempAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+const tempAmbSeriesAll = Array.from({ length: 16 }, (_, index) => ({
   id: `Temp ${index + 1}`,
+  idx: index + 1,
   key: `temp_amb${index + 1}` as keyof TrendRow,
   color: ambientColors[index % ambientColors.length],
 }));
 
-const coAmbSeries = Array.from({ length: 16 }, (_, index) => ({
+const coAmbSeriesAll = Array.from({ length: 16 }, (_, index) => ({
   id: `CO ${index + 1}`,
+  idx: index + 1,
   key: `co_amb${index + 1}` as keyof TrendRow,
   color: ambientColors[index % ambientColors.length],
 }));
@@ -85,7 +88,6 @@ function parseTimestampMs(ts: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-// CORREÇÃO: Função melhorada para tratar formato ISO do PostgreSQL e do WebCTRL
 function shortLabel(ts: any): string {
   const ms = parseTimestampMs(ts);
   if (ms === null) return String(ts ?? "").slice(0, 5);
@@ -96,7 +98,6 @@ function shortLabel(ts: any): string {
   }).format(new Date(ms));
 }
 
-// CORREÇÃO: Função para garantir que o gráfico siga a linha do tempo correta
 function sortData(data: TrendRow[]) {
   return [...data].sort((a, b) => {
     return (parseTimestampMs(a.timestamp) ?? 0) - (parseTimestampMs(b.timestamp) ?? 0);
@@ -139,10 +140,38 @@ function EmptyState({ height = 240 }: { height?: number }) {
 }
 
 /**
+ * Hook: legend click toggles series visibility (per-chart, local).
+ */
+function useHidden() {
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const onLegendClick = (e: any) => {
+    const key = e?.dataKey ?? e?.value;
+    if (!key) return;
+    setHidden((prev) => ({ ...prev, [String(key)]: !prev[String(key)] }));
+  };
+  const isHidden = (key: string) => !!hidden[key];
+  return { isHidden, onLegendClick };
+}
+
+interface ChillerFilterProps {
+  selectedChillers?: readonly string[];
+}
+
+/**
  * 1) LINE — Eficiência kW/TR ao longo do tempo
  */
-export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
-  // Ordenamos antes de mapear para o gráfico não "voltar no tempo"
+export function EfficiencyLineChart({ data, selectedChillers }: { data: TrendRow[] } & ChillerFilterProps) {
+  const { isHidden, onLegendClick } = useHidden();
+  const visibleChillers = useMemo(
+    () =>
+      chillerSeries.filter((s) =>
+        !selectedChillers || selectedChillers.length === 0
+          ? true
+          : selectedChillers.includes(s.id),
+      ),
+    [selectedChillers],
+  );
+
   const validKwTr = (v: unknown) => {
     const n = num(v);
     return n !== null && n > 0 && n <= 4 ? n : null;
@@ -161,7 +190,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
     .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
   return (
-    <ChartFrame title="Eficiência kW/TR" subtitle="série temporal">
+    <ChartFrame title="Eficiência kW/TR" subtitle="série temporal · clique na legenda">
       {chartData.length === 0 ? (
         <EmptyState />
       ) : (
@@ -177,7 +206,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
             />
             <YAxis tick={axisStyle} />
             <Tooltip />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             <Line
               name="Média Planta"
               type="monotone"
@@ -186,8 +215,9 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
               dot={false}
               strokeWidth={2}
               connectNulls={true}
+              hide={isHidden("eficiencia_kw_tr")}
             />
-            {chillerSeries.map((series) => (
+            {visibleChillers.map((series) => (
               <Line
                 key={series.kwtr}
                 name={series.id}
@@ -197,6 +227,7 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
                 dot={false}
                 strokeWidth={1.6}
                 connectNulls={true}
+                hide={isHidden(series.kwtr)}
               />
             ))}
           </LineChart>
@@ -209,9 +240,12 @@ export function EfficiencyLineChart({ data }: { data: TrendRow[] }) {
 /**
  * 2) BARS — Consumo kW por chiller + periféricos
  */
-export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
+export function ConsumptionBarChart({ data, selectedChillers }: { data: TrendRow[] } & ChillerFilterProps) {
+  const visibleChillers = chillerSeries.filter((s) =>
+    !selectedChillers || selectedChillers.length === 0 ? true : selectedChillers.includes(s.id),
+  );
   const keys: { key: keyof TrendRow; label: string; color: string }[] = [
-    ...chillerSeries.map((series) => ({ key: series.kw as keyof TrendRow, label: series.id, color: series.color })),
+    ...visibleChillers.map((series) => ({ key: series.kw as keyof TrendRow, label: series.id, color: series.color })),
     { key: "kw_perifericos", label: "Perif.", color: "var(--chart-6)" },
   ];
 
@@ -246,8 +280,12 @@ export function ConsumptionBarChart({ data }: { data: TrendRow[] }) {
 /**
  * 3) SCATTER — Temp. Externa × kW/TR
  */
-export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
-  const chartData = chillerSeries.map((series) => ({
+export function TempExtVsEfficiencyScatter({ data, selectedChillers }: { data: TrendRow[] } & ChillerFilterProps) {
+  const { isHidden, onLegendClick } = useHidden();
+  const visibleChillers = chillerSeries.filter((s) =>
+    !selectedChillers || selectedChillers.length === 0 ? true : selectedChillers.includes(s.id),
+  );
+  const chartData = visibleChillers.map((series) => ({
     id: series.id,
     color: series.color,
     points: data
@@ -257,33 +295,27 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
   const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
-    <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática">
+    <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática · clique na legenda">
       {!hasData ? (
         <EmptyState />
       ) : (
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              type="number"
-              dataKey="x"
-              name="Temp. Ext"
-              unit="°C"
-              domain={['auto', 'auto']}
-              tick={axisStyle}
-            />
-            <YAxis
-              type="number"
-              dataKey="y"
-              name="kW/TR"
-              domain={['auto', 'auto']}
-              tick={axisStyle}
-            />
+            <XAxis type="number" dataKey="x" name="Temp. Ext" unit="°C" domain={["auto", "auto"]} tick={axisStyle} />
+            <YAxis type="number" dataKey="y" name="kW/TR" domain={["auto", "auto"]} tick={axisStyle} />
             <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             {chartData.map((series) => (
-              <Scatter key={series.id} name={series.id} data={series.points} fill={series.color} opacity={0.7} />
+              <Scatter
+                key={series.id}
+                name={series.id}
+                data={series.points}
+                fill={series.color}
+                opacity={0.7}
+                hide={isHidden(series.id)}
+              />
             ))}
           </ScatterChart>
         </ResponsiveContainer>
@@ -295,8 +327,12 @@ export function TempExtVsEfficiencyScatter({ data }: { data: TrendRow[] }) {
 /**
  * 4) SCATTER — kW/TR × Carga (TR)
  */
-export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
-  const chartData = chillerSeries.map((series) => ({
+export function EfficiencyVsLoadScatter({ data, selectedChillers }: { data: TrendRow[] } & ChillerFilterProps) {
+  const { isHidden, onLegendClick } = useHidden();
+  const visibleChillers = chillerSeries.filter((s) =>
+    !selectedChillers || selectedChillers.length === 0 ? true : selectedChillers.includes(s.id),
+  );
+  const chartData = visibleChillers.map((series) => ({
     id: series.id,
     color: series.color,
     points: data
@@ -306,33 +342,27 @@ export function EfficiencyVsLoadScatter({ data }: { data: TrendRow[] }) {
   const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
-    <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação">
+    <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação · clique na legenda">
       {!hasData ? (
         <EmptyState />
       ) : (
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              type="number"
-              dataKey="carga_tr"
-              name="Carga"
-              unit=" TR"
-              domain={['auto', 'auto']}
-              tick={axisStyle}
-            />
-            <YAxis
-              type="number"
-              dataKey="kw_tr"
-              name="kW/TR"
-              domain={['auto', 'auto']}
-              tick={axisStyle}
-            />
+            <XAxis type="number" dataKey="carga_tr" name="Carga" unit=" TR" domain={["auto", "auto"]} tick={axisStyle} />
+            <YAxis type="number" dataKey="kw_tr" name="kW/TR" domain={["auto", "auto"]} tick={axisStyle} />
             <ZAxis range={[60, 60]} />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             {chartData.map((series) => (
-              <Scatter key={series.id} name={series.id} data={series.points} fill={series.color} opacity={0.7} />
+              <Scatter
+                key={series.id}
+                name={series.id}
+                data={series.points}
+                fill={series.color}
+                opacity={0.7}
+                hide={isHidden(series.id)}
+              />
             ))}
           </ScatterChart>
         </ResponsiveContainer>
@@ -356,6 +386,7 @@ function AmbientLineChart({
   series: { id: string; key: keyof TrendRow; color: string }[];
   yDomain?: [number, number];
 }) {
+  const { isHidden, onLegendClick } = useHidden();
   const positive = (v: unknown) => {
     const n = num(v);
     return n !== null && n > 0 ? n : null;
@@ -394,7 +425,7 @@ function AmbientLineChart({
             />
             <YAxis tick={axisStyle} tickMargin={8} unit={unit} domain={yDomain} />
             <Tooltip />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             {series.map((item, index) => (
               <Line
                 key={String(item.key)}
@@ -406,6 +437,7 @@ function AmbientLineChart({
                 strokeWidth={1.4}
                 strokeDasharray={index >= ambientColors.length ? "4 3" : undefined}
                 connectNulls={true}
+                hide={isHidden(String(item.key))}
               />
             ))}
           </LineChart>
@@ -415,27 +447,33 @@ function AmbientLineChart({
   );
 }
 
-export function AmbientTemperatureChart({ data }: { data: TrendRow[] }) {
+export function AmbientTemperatureChart({ data, selectedSensors }: { data: TrendRow[]; selectedSensors?: number[] }) {
+  const series = tempAmbSeriesAll.filter((s) =>
+    !selectedSensors || selectedSensors.length === 0 ? true : selectedSensors.includes(s.idx),
+  );
   return (
     <AmbientLineChart
       data={data}
       title="Temperaturas Mall"
-      subtitle="CLIMATIZAÇÃO"
+      subtitle="CLIMATIZAÇÃO · clique na legenda"
       unit="°C"
-      series={tempAmbSeries}
+      series={series}
       yDomain={[21, 30]}
     />
   );
 }
 
-export function AmbientCOChart({ data }: { data: TrendRow[] }) {
+export function AmbientCOChart({ data, selectedSensors }: { data: TrendRow[]; selectedSensors?: number[] }) {
+  const series = coAmbSeriesAll.filter((s) =>
+    !selectedSensors || selectedSensors.length === 0 ? true : selectedSensors.includes(s.idx),
+  );
   return (
     <AmbientLineChart
       data={data}
       title="CO2 Mall"
-      subtitle="QUALIDADE DO AR"
+      subtitle="QUALIDADE DO AR · clique na legenda"
       unit=" ppm"
-      series={coAmbSeries}
+      series={series}
     />
   );
 }
