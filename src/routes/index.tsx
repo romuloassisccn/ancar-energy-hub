@@ -254,14 +254,6 @@ function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <GlobalFilter
-              chillers={selChillers}
-              onChillersChange={setSelChillers}
-              tempSensors={selTempSensors}
-              onTempSensorsChange={setSelTempSensors}
-              coSensors={selCoSensors}
-              onCoSensorsChange={setSelCoSensors}
-            />
             <RangeSelector value={range} onChange={setRange} />
             <ThemeToggle />
           </div>
