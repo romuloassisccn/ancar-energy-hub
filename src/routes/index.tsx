@@ -235,7 +235,7 @@ function DashboardPage() {
           <SparklineKpiCard
             label="Temp. Alimentação Água Gelada"
             value={format(selectedKpis?.avgTempAg, 1)}
-            unit="°C"
+            unit="°C (média)"
             icon={Droplet}
             tone="warning"
             data={selectedKpis?.tempAgSeries ?? []}
