@@ -120,7 +120,7 @@ function toNumberOrNull(value: unknown): number | null {
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    // Tenta ler do .env (Vite), se não existir usa a URL padrão como backup
+    // Prioriza a URL do Easypanel para evitar conexão com IP local antigo
     const apiUrl = import.meta.env.VITE_API_URL || "https://ancar-n8n.gpfgqx.easypanel.host/webhook/dashboard-dados";
     
     console.log(`[dashboard] conectando em: ${apiUrl}`);
@@ -135,15 +135,17 @@ export async function buildDataset(): Promise<TrendRow[]> {
     if (!res.ok) throw new Error(`Erro na API: ${res.status}`);
 
     const data = await res.json();
-
-    // Garante que 'data' seja um array
     const rows = Array.isArray(data) ? data : [data];
-    console.log(`[dashboard] registros recebidos: ${rows.length}`);
+    
+    console.log(`[dashboard] bruto recebido: ${rows.length} registros`);
     
     const normalized: TrendRow[] = rows.map((r: any) => {
+      // Normalização da sigla do shopping para garantir match com SHOPPING_IDS
+      const sId = String(r.shopping_id || r.shopping || "").trim().toUpperCase();
+      
       const out: any = {
         timestamp: String(r.timestamp ?? r.data_hora ?? ""),
-        shopping_id: String(r.shopping_id || "").trim().toUpperCase(),
+        shopping_id: sId as ShoppingId,
       };
       
       const numericKeys = [
@@ -157,7 +159,6 @@ export async function buildDataset(): Promise<TrendRow[]> {
       for (const k of numericKeys) out[k] = toNumberOrNull(r[k]);
       
       for (let i = 1; i <= 16; i++) {
-        // Correção de possível erro de digitação vindo do banco (tem_amb vs temp_amb)
         out[`temp_amb${i}`] = toNumberOrNull(r[`temp_amb${i}`] ?? r[`tem_amb${i}`]);
         out[`co_amb${i}`] = toNumberOrNull(r[`co_amb${i}`]);
       }
@@ -167,6 +168,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
       return out as TrendRow;
     });
 
+    console.log(`[dashboard] processados com sucesso: ${normalized.length}`);
     return normalized;
   } catch (err) {
     console.error("Erro ao buscar dados do n8n:", err);
@@ -178,23 +180,32 @@ export async function buildDataset(): Promise<TrendRow[]> {
 // RANGE FILTER (Filtro Temporal)
 // -----------------------------
 export function filterByRange(rows: TrendRow[], range: RangeKey): TrendRow[] {
+  // Se não houver registros, nem tenta filtrar
+  if (!rows.length) return [];
+
   const now = getSaoPauloDateParts(new Date());
   const todayStart = { ...now, hour: 0, minute: 0, second: 0 };
   const cutoff = getRangeCutoff(now, range);
 
   const filtered = rows.filter((r) => {
     const rowDate = parsePostgresTimestamp(r.timestamp);
-    if (!rowDate) return true; // mantém registros sem timestamp parseável
+    if (!rowDate) return true; 
 
     if (range === "today") {
-      return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, todayStart) < 0;
+      return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, todayStart) <= 1;
     }
 
-    return compareDateParts(rowDate, cutoff) >= 0 && compareDateParts(rowDate, now) <= 0;
+    return compareDateParts(rowDate, cutoff) >= 0;
   });
 
-  // Resiliência: se o filtro zerar o dataset, devolve tudo para o dashboard sempre renderizar.
-  return filtered.length === 0 ? rows : filtered;
+  // Fallback: Se o filtro for muito agressivo e zerar tudo, retorna os últimos 100 registros 
+  // para o dashboard não ficar em branco enquanto os dados novos não entram.
+  if (filtered.length === 0 && rows.length > 0) {
+    console.warn(`[dashboard] Filtro ${range} retornou vazio. Mostrando dados brutos.`);
+    return rows;
+  }
+
+  return filtered;
 }
 
 function getSaoPauloDateParts(date: Date) {
@@ -223,11 +234,7 @@ function getSaoPauloDateParts(date: Date) {
 
 function parsePostgresTimestamp(timestamp: string) {
   if (!timestamp) return null;
-
-  const match = String(timestamp).match(
-    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/,
-  );
-
+  const match = String(timestamp).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (!match) return null;
 
   return {
@@ -240,27 +247,14 @@ function parsePostgresTimestamp(timestamp: string) {
   };
 }
 
-function getRangeCutoff(
-  now: ReturnType<typeof getSaoPauloDateParts>,
-  range: RangeKey,
-) {
-  if (range === "today") {
-    const yesterday = new Date(Date.UTC(now.year, now.month - 1, now.day - 1, 0, 0, 0));
-
-    return {
-      year: yesterday.getUTCFullYear(),
-      month: yesterday.getUTCMonth() + 1,
-      day: yesterday.getUTCDate(),
-      hour: 0,
-      minute: 0,
-      second: 0,
-    };
-  }
-
-  const monthsBack =
-    range === "month" ? 1 : range === "quarter" ? 2 : range === "year" ? 3 : 0;
-  const daysBack = range === "week" ? 7 : 0;
-  const date = new Date(Date.UTC(now.year, now.month - 1 - monthsBack, now.day - daysBack, 0, 0, 0));
+function getRangeCutoff(now: ReturnType<typeof getSaoPauloDateParts>, range: RangeKey) {
+  const date = new Date(Date.UTC(now.year, now.month - 1, now.day));
+  
+  if (range === "today") date.setUTCDate(date.getUTCDate() - 1);
+  else if (range === "week") date.setUTCDate(date.getUTCDate() - 7);
+  else if (range === "month") date.setUTCMonth(date.getUTCMonth() - 1);
+  else if (range === "quarter") date.setUTCMonth(date.getUTCMonth() - 3);
+  else if (range === "year") date.setUTCFullYear(date.getUTCFullYear() - 1);
 
   return {
     year: date.getUTCFullYear(),
@@ -272,13 +266,11 @@ function getRangeCutoff(
   };
 }
 
-function compareDateParts(a: NonNullable<ReturnType<typeof parsePostgresTimestamp>>, b: ReturnType<typeof getSaoPauloDateParts>) {
+function compareDateParts(a: any, b: any) {
   const keys = ["year", "month", "day", "hour", "minute", "second"] as const;
-
   for (const key of keys) {
     if (a[key] !== b[key]) return a[key] - b[key];
   }
-
   return 0;
 }
 
@@ -303,7 +295,7 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
     }
 
     const effRows = arr.filter(
-      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0 && r.eficiencia_kw_tr <= 4,
+      (r) => typeof r.eficiencia_kw_tr === "number" && r.eficiencia_kw_tr > 0 && r.eficiencia_kw_tr <= 5
     );
     const kwRows = arr.filter((r) => typeof r.kw_total_planta === "number" && r.kw_total_planta > 0);
 
@@ -320,8 +312,8 @@ export function aggregateByShopping(rows: TrendRow[]): ShoppingAggregate[] {
     return {
       shopping_id: id,
       name: SHOPPING_NAMES[id],
-      avg_efficiency: avgEff || 0,
-      avg_kw_total: avgKw || 0,
+      avg_efficiency: avgEff,
+      avg_kw_total: avgKw,
       samples: arr.length,
       target,
       deviation,
@@ -340,11 +332,7 @@ export function performanceTier(eff: number): "excellent" | "good" | "warning" |
   return "critical";
 }
 
-// Tier baseado em desvio % vs meta
-// dev <= -10 → ótimo; -10 < dev <= 0 → bom; 0 < dev <= 5 → atenção; dev > 5 → crítico
-export function tierByDeviation(
-  deviation: number | null,
-): "excellent" | "good" | "warning" | "critical" | "none" {
+export function tierByDeviation(deviation: number | null): "excellent" | "good" | "warning" | "critical" | "none" {
   if (deviation === null || !Number.isFinite(deviation)) return "none";
   if (deviation <= -10) return "excellent";
   if (deviation <= 0) return "good";
