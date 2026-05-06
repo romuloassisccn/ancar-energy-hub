@@ -120,18 +120,29 @@ function toNumberOrNull(value: unknown): number | null {
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    const res = await fetch(import.meta.env.VITE_API_URL || "http://2.24.76.1:5678/webhook/dashboard-dados");
+    // Apontamento atualizado para o Webhook de produção no Easypanel
+    const apiUrl = "https://ancar-n8n.gpfgqx.easypanel.host/webhook/dashboard-dados";
+    
+    const res = await fetch(apiUrl, {
+      method: "GET", // Conforme configurado no seu nó do n8n
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    if (!res.ok) throw new Error(`Erro na API: ${res.status}`);
+
     const data = await res.json();
 
     const rows = Array.isArray(data) ? data : [data];
     console.log(`[dashboard] registros recebidos: ${rows.length}`);
-    if (rows.length > 0) console.log("[dashboard] primeiro registro:", rows[0]);
-
+    
     const normalized: TrendRow[] = rows.map((r: any) => {
       const out: any = {
         timestamp: String(r.timestamp ?? r.data_hora ?? ""),
         shopping_id: String(r.shopping_id || "").trim().toUpperCase(),
       };
+      
       const numericKeys = [
         "temp_ext","temp_ag_cag","vazao",
         "tr_ur1","tr_ur2","tr_ur3","tr_ur4","tr_ur5",
@@ -139,12 +150,16 @@ export async function buildDataset(): Promise<TrendRow[]> {
         "kwtr_ur1","kwtr_ur2","kwtr_ur3","kwtr_ur4","kwtr_ur5",
         "kw_perifericos","kw_total_planta","eficiencia_kw_tr",
       ];
+
       for (const k of numericKeys) out[k] = toNumberOrNull(r[k]);
+      
       for (let i = 1; i <= 16; i++) {
         out[`temp_amb${i}`] = toNumberOrNull(r[`temp_amb${i}`] ?? r[`tem_amb${i}`]);
         out[`co_amb${i}`] = toNumberOrNull(r[`co_amb${i}`]);
       }
+      
       if (out.temp_ext === null) out.temp_ext = toNumberOrNull(r.temp);
+      
       return out as TrendRow;
     });
 
