@@ -6,4 +6,15 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-export default defineConfig();
+export default defineConfig({
+  vite: {
+    server: {
+      host: "0.0.0.0",
+      port: 8000,
+      allowedHosts: ["dashboard.2see.io"],
+      hmr: {
+        clientPort: 443,
+      },
+    },
+  },
+});
