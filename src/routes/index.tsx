@@ -290,8 +290,8 @@ function DashboardPage() {
                 : range === "month"
                 ? "30d"
                 : range === "quarter"
-                ? "90d"
-                : "Tudo"
+                ? "60d"
+                : "90d"
             }
           />
         </section>
