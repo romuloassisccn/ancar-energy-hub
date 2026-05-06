@@ -144,14 +144,29 @@ function DashboardPage() {
         .filter((p) => Number.isFinite(p.v) && p.v > 0);
 
     const maxVazao = selectedRows.reduce((m, r) => Math.max(m, r.vazao || 0), 0);
-    const maxTempExt = selectedRows.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
+    const tempExtValid = selectedRows.filter((r) => typeof r.temp_ext === "number" && r.temp_ext! <= 55);
+    const maxTempExt = tempExtValid.reduce((m, r) => Math.max(m, r.temp_ext || 0), 0);
 
-    const tempAgValues = selectedRows
-      .map((r) => Number((r as any).temp_ag_cag))
-      .filter((v) => Number.isFinite(v));
-    const avgTempAg = tempAgValues.length
-      ? tempAgValues.reduce((a, b) => a + b, 0) / tempAgValues.length
+    const tempAgEffValid = selectedRows.filter(
+      (r) =>
+        typeof r.eficiencia_kw_tr === "number" &&
+        r.eficiencia_kw_tr! > 0 &&
+        r.eficiencia_kw_tr! < 5 &&
+        Number.isFinite(Number((r as any).temp_ag_cag)),
+    );
+    const avgTempAg = tempAgEffValid.length
+      ? tempAgEffValid.reduce((a, b) => a + Number((b as any).temp_ag_cag), 0) / tempAgEffValid.length
       : 0;
+
+    const tempAgSeries = [...tempAgEffValid]
+      .sort((a, b) => (new Date(a.timestamp).getTime() || 0) - (new Date(b.timestamp).getTime() || 0))
+      .map((r) => ({ t: new Date(r.timestamp).getTime() || 0, v: Number((r as any).temp_ag_cag) }))
+      .filter((p) => Number.isFinite(p.v));
+
+    const tempExtSeries = [...tempExtValid]
+      .sort((a, b) => (new Date(a.timestamp).getTime() || 0) - (new Date(b.timestamp).getTime() || 0))
+      .map((r) => ({ t: new Date(r.timestamp).getTime() || 0, v: Number(r.temp_ext) }))
+      .filter((p) => Number.isFinite(p.v) && p.v > 0);
 
     const valid = selectedRows.filter(
       (r) =>
