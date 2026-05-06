@@ -253,8 +253,8 @@ function getRangeCutoff(now: ReturnType<typeof getSaoPauloDateParts>, range: Ran
   if (range === "today") date.setUTCDate(date.getUTCDate() - 1);
   else if (range === "week") date.setUTCDate(date.getUTCDate() - 7);
   else if (range === "month") date.setUTCMonth(date.getUTCMonth() - 1);
-  else if (range === "quarter") date.setUTCMonth(date.getUTCMonth() - 3);
-  else if (range === "year") date.setUTCFullYear(date.getUTCFullYear() - 1);
+  else if (range === "quarter") date.setUTCMonth(date.getUTCMonth() - 2);
+  else if (range === "year") date.setUTCMonth(date.getUTCMonth() - 3);
 
   return {
     year: date.getUTCFullYear(),
