@@ -120,7 +120,7 @@ function toNumberOrNull(value: unknown): number | null {
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    const res = await fetch(import.meta.env.VITE_API_URL || "[http://2.24.76.1:5678/webhook/dashboard-dados](http://2.24.76.1:5678/webhook/dashboard-dados)");
+    const res = await fetch(import.meta.env.VITE_API_URL || "http://2.24.76.1:5678/webhook/dashboard-dados");
     const data = await res.json();
 
     const rows = Array.isArray(data) ? data : [data];
