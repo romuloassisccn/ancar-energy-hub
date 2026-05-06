@@ -290,7 +290,7 @@ export function TempExtVsEfficiencyScatter({ data, selectedChillers }: { data: T
     color: series.color,
     points: data
       .map((r) => ({ x: num(r.temp_ext), y: num(r[series.kwtr]) }))
-      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.y > 0 && point.y <= 4),
+      .filter((point): point is { x: number; y: number } => point.x !== null && point.y !== null && point.x <= 55 && point.y > 0 && point.y <= 4),
   }));
   const hasData = chartData.some((series) => series.points.length > 0);
 
