@@ -185,8 +185,8 @@ function DashboardPage() {
       maxVazao,
       maxTempExt,
       vazaoSeries: series("vazao"),
-      tempAgSeries: series("temp_ag_cag" as any),
-      tempExtSeries: series("temp_ext"),
+      tempAgSeries,
+      tempExtSeries,
       samples: selectedRows.length,
     };
   }, [selectedRows]);
