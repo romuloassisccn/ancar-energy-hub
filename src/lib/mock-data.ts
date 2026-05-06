@@ -120,11 +120,13 @@ function toNumberOrNull(value: unknown): number | null {
 // -----------------------------
 export async function buildDataset(): Promise<TrendRow[]> {
   try {
-    // Apontamento atualizado para o Webhook de produção no Easypanel
-    const apiUrl = "https://ancar-n8n.gpfgqx.easypanel.host/webhook/dashboard-dados";
+    // Tenta ler do .env (Vite), se não existir usa a URL padrão como backup
+    const apiUrl = import.meta.env.VITE_API_URL || "https://ancar-n8n.gpfgqx.easypanel.host/webhook/dashboard-dados";
     
+    console.log(`[dashboard] conectando em: ${apiUrl}`);
+
     const res = await fetch(apiUrl, {
-      method: "GET", // Conforme configurado no seu nó do n8n
+      method: "GET",
       headers: {
         "Accept": "application/json"
       }
@@ -134,6 +136,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
 
     const data = await res.json();
 
+    // Garante que 'data' seja um array
     const rows = Array.isArray(data) ? data : [data];
     console.log(`[dashboard] registros recebidos: ${rows.length}`);
     
@@ -154,6 +157,7 @@ export async function buildDataset(): Promise<TrendRow[]> {
       for (const k of numericKeys) out[k] = toNumberOrNull(r[k]);
       
       for (let i = 1; i <= 16; i++) {
+        // Correção de possível erro de digitação vindo do banco (tem_amb vs temp_amb)
         out[`temp_amb${i}`] = toNumberOrNull(r[`temp_amb${i}`] ?? r[`tem_amb${i}`]);
         out[`co_amb${i}`] = toNumberOrNull(r[`co_amb${i}`]);
       }
