@@ -190,7 +190,7 @@ export function EfficiencyLineChart({ data, selectedChillers }: { data: TrendRow
     .filter((r): r is typeof r & { timestampMs: number } => r.timestampMs !== null);
 
   return (
-    <ChartFrame title="Eficiência kW/TR" subtitle="série temporal · clique na legenda">
+    <ChartFrame title="Eficiência kW/TR" subtitle="série temporal">
       {chartData.length === 0 ? (
         <EmptyState />
       ) : (
@@ -205,10 +205,10 @@ export function EfficiencyLineChart({ data, selectedChillers }: { data: TrendRow
               tickFormatter={(value) => shortLabel(value)}
             />
             <YAxis tick={axisStyle} />
-            <Tooltip />
+            <Tooltip cursor={{ stroke: "hsl(var(--foreground))", strokeWidth: 1, strokeDasharray: "3 3" }} />
             <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             <Line
-              name="Média Planta"
+              name="kW/TR CAG"
               type="monotone"
               dataKey="eficiencia_kw_tr"
               stroke="var(--chart-1)"
@@ -268,7 +268,7 @@ export function ConsumptionBarChart({ data, selectedChillers }: { data: TrendRow
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
             <XAxis dataKey="name" tick={axisStyle} />
             <YAxis tick={axisStyle} />
-            <Tooltip />
+            <Tooltip cursor={{ fill: "hsl(var(--foreground) / 0.08)" }} />
             <Bar dataKey="kw" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -295,7 +295,7 @@ export function TempExtVsEfficiencyScatter({ data, selectedChillers }: { data: T
   const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
-    <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática · clique na legenda">
+    <ChartFrame title="Temp. Externa × kW/TR" subtitle="correlação climática">
       {!hasData ? (
         <EmptyState />
       ) : (
@@ -342,7 +342,7 @@ export function EfficiencyVsLoadScatter({ data, selectedChillers }: { data: Tren
   const hasData = chartData.some((series) => series.points.length > 0);
 
   return (
-    <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação · clique na legenda">
+    <ChartFrame title="kW/TR × Carga (TR)" subtitle="curva de operação">
       {!hasData ? (
         <EmptyState />
       ) : (
@@ -424,7 +424,7 @@ function AmbientLineChart({
               tickFormatter={(value) => shortLabel(value)}
             />
             <YAxis tick={axisStyle} tickMargin={8} unit={unit} domain={yDomain} />
-            <Tooltip />
+            <Tooltip cursor={{ stroke: "hsl(var(--foreground))", strokeWidth: 1, strokeDasharray: "3 3" }} />
             <Legend wrapperStyle={{ fontSize: 11, cursor: "pointer" }} onClick={onLegendClick} />
             {series.map((item, index) => (
               <Line
@@ -455,7 +455,7 @@ export function AmbientTemperatureChart({ data, selectedSensors }: { data: Trend
     <AmbientLineChart
       data={data}
       title="Temperaturas Mall"
-      subtitle="CLIMATIZAÇÃO · clique na legenda"
+      subtitle="CLIMATIZAÇÃO"
       unit="°C"
       series={series}
       yDomain={[21, 30]}
@@ -471,7 +471,7 @@ export function AmbientCOChart({ data, selectedSensors }: { data: TrendRow[]; se
     <AmbientLineChart
       data={data}
       title="CO2 Mall"
-      subtitle="QUALIDADE DO AR · clique na legenda"
+      subtitle="QUALIDADE DO AR"
       unit=" ppm"
       series={series}
     />
