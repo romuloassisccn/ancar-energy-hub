@@ -253,7 +253,10 @@ export function ConsumptionBarChart({ data, selectedChillers }: { data: TrendRow
     data.length === 0
       ? []
       : keys.map(({ key, label, color }) => {
-          const validData = data.filter((r) => num(r[key]) !== null);
+          const validData = data.filter((r) => {
+            const n = num(r[key]);
+            return n !== null && n >= 50 && n <= 500;
+          });
           const sum = validData.reduce((a, r) => a + (Number(r[key]) || 0), 0);
           return { name: label, kw: validData.length > 0 ? sum / validData.length : 0, fill: color };
         });
